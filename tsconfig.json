@@ -1,0 +1,19 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" },
+    { "path": "./tsconfig.engine.json" }
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@financial-engine/*": ["./shared/financial-engine/*"],
+      "@policy-engine/*": ["./shared/policy-engine/*"],
+      "@comparison-snapshot/*": ["./shared/comparison-snapshot/*"]
+    },
+    "strict": true,
+    "ignoreDeprecations": "6.0"
+  }
+}
