@@ -22,6 +22,9 @@ export const ZERO_VS_STANDARD_AUTONOMY_WARNING =
 export const DOCTOR_COMPENSATION_NOTE =
   "Con lo sconto si riduce anche la base di fatturato sulla quale viene calcolato il compenso medico.";
 
+export const NO_ZERO_INTEREST_COMPATIBLE_MESSAGE =
+  "Nessuna soluzione a tasso zero compatibile disponibile per il confronto.";
+
 export const NO_ZERO_INTEREST_ON_DURATION_MESSAGE =
   "Non è disponibile un tasso zero sulla durata selezionata.";
 

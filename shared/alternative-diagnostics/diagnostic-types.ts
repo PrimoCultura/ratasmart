@@ -5,7 +5,7 @@ import type { DocumentationRequirements } from "../documentation-requirements/in
  * Non usa AI; riusa policy-engine e vincoli delle tabelle attive.
  */
 
-export const ALTERNATIVE_DIAGNOSTICS_VERSION = "1.1.0";
+export const ALTERNATIVE_DIAGNOSTICS_VERSION = "1.2.0";
 
 export type BlockingConstraintType =
   | "temporary_contract_expiry"
@@ -49,7 +49,7 @@ export type AlternativeScenario = {
 };
 
 export type InformationalSuggestion = {
-  type: "guarantor" | "other";
+  type: "guarantor" | "complete_missing_data" | "other";
   message: string;
 };
 

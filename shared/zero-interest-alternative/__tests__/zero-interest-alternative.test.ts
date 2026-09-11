@@ -19,7 +19,7 @@ import {
   getAlertTitle,
   getAnalysisCardTitle,
   getReferenceShortLabel,
-  NO_ZERO_INTEREST_ON_DURATION_MESSAGE,
+  NO_ZERO_INTEREST_COMPATIBLE_MESSAGE,
   summarizeEconomicImpact,
   ZERO_INTEREST_ALTERNATIVE_CONFIG,
   ZERO_VS_STANDARD_AUTONOMY_WARNING,
@@ -590,7 +590,8 @@ describe("zero_interest exclusive reference (no subsidized fallback)", () => {
     });
     expect(analysis.primary).toBeUndefined();
     expect(analysis.alternatives).toEqual([]);
-    expect(analysis.messages).toContain(NO_ZERO_INTEREST_ON_DURATION_MESSAGE);
+    expect(analysis.messages).toContain(NO_ZERO_INTEREST_COMPATIBLE_MESSAGE);
+    expect(analysis.messages.join(" ")).not.toMatch(/agevolata/i);
   });
 
   it("D) alert reference contiene PCA", () => {

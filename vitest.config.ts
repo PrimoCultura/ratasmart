@@ -4,6 +4,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
     alias: {
+      "@": path.resolve(__dirname, "./src"),
       "@financial-engine": path.resolve(__dirname, "./shared/financial-engine"),
       "@policy-engine": path.resolve(__dirname, "./shared/policy-engine"),
       "@knowledge-engine": path.resolve(__dirname, "./shared/knowledge-engine"),
@@ -20,6 +21,7 @@ export default defineConfig({
       "shared/alternative-diagnostics/**/*.test.ts",
       "shared/documentation-requirements/**/*.test.ts",
       "shared/zero-interest-alternative/**/*.test.ts",
+      "src/features/simulator/**/*.test.ts",
     ],
     environment: "node",
   },

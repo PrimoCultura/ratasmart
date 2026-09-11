@@ -18,6 +18,7 @@ import {
   findAlternativeScenarios,
   noDurationFitsTemporalWindow,
 } from "./find-alternative-scenarios.ts";
+import { resolveUnresolvedPatientDataGuidance } from "./unresolved-patient-data.ts";
 
 export type DiagnosticsBuildInput = {
   calculationDate: number;
@@ -101,64 +102,81 @@ export function buildComparisonDiagnostics(
     };
   }
 
+  const failedRules = collectFailedRules([
+    ...input.incompatibleSolutions,
+    ...input.verificationRequiredSolutions,
+  ]);
+
   const { blockingConstraints, primaryConstraint } = analyzeBlockingConstraints(
     {
       patient: input.patient,
       calculationDate: input.calculationDate,
       selectedDurationMonths: input.selectedDurationMonths,
       firstInstallmentDelayDays: input.firstInstallmentDelayDays,
-      failedRules: collectFailedRules([
-        ...input.incompatibleSolutions,
-        ...input.verificationRequiredSolutions,
-      ]),
+      failedRules,
     },
   );
 
-  let nearestAlternatives = findAlternativeScenarios({
-    requestedAmount: input.requestedAmount,
-    selectedDurationMonths: input.selectedDurationMonths,
-    delayDays: input.firstInstallmentDelayDays,
-    calculationDate: input.calculationDate,
+  const unresolvedPatientData = resolveUnresolvedPatientDataGuidance({
     patient: input.patient,
-    tables: input.tables,
-    companyNameById: input.companyNameById,
-    rulesByTableId: input.rulesByTableId,
+    failedRules,
+    primaryConstraint,
   });
 
-  const temporalBlocked = noDurationFitsTemporalWindow({
-    requestedAmount: input.requestedAmount,
-    delayDays: input.firstInstallmentDelayDays,
-    calculationDate: input.calculationDate,
-    patient: input.patient,
-    tables: input.tables,
-  });
+  let nearestAlternatives = unresolvedPatientData.suppressesEconomicAlternatives
+    ? []
+    : findAlternativeScenarios({
+        requestedAmount: input.requestedAmount,
+        selectedDurationMonths: input.selectedDurationMonths,
+        delayDays: input.firstInstallmentDelayDays,
+        calculationDate: input.calculationDate,
+        patient: input.patient,
+        tables: input.tables,
+        companyNameById: input.companyNameById,
+        rulesByTableId: input.rulesByTableId,
+      });
 
-  if (temporalBlocked) {
-    nearestAlternatives = nearestAlternatives.filter(
+  if (!unresolvedPatientData.suppressesEconomicAlternatives) {
+    const temporalBlocked = noDurationFitsTemporalWindow({
+      requestedAmount: input.requestedAmount,
+      delayDays: input.firstInstallmentDelayDays,
+      calculationDate: input.calculationDate,
+      patient: input.patient,
+      tables: input.tables,
+    });
+
+    if (temporalBlocked) {
+      nearestAlternatives = nearestAlternatives.filter(
+        (item) =>
+          item.type === "renew_contract" ||
+          item.type === "renew_residence_permit" ||
+          item.type === "lower_amount" ||
+          item.type === "lower_amount_and_shorter_duration",
+      );
+    }
+
+    const renewals = nearestAlternatives
+      .filter(
+        (item) =>
+          item.type === "renew_contract" ||
+          item.type === "renew_residence_permit",
+      )
+      .slice(0, 2);
+    const economic = nearestAlternatives.filter(
       (item) =>
-        item.type === "renew_contract" ||
-        item.type === "renew_residence_permit" ||
-        item.type === "lower_amount" ||
-        item.type === "lower_amount_and_shorter_duration",
+        item.type !== "renew_contract" &&
+        item.type !== "renew_residence_permit",
     );
+    nearestAlternatives = [...economic, ...renewals];
   }
 
-  const renewals = nearestAlternatives
-    .filter(
-      (item) =>
-        item.type === "renew_contract" ||
-        item.type === "renew_residence_permit",
-    )
-    .slice(0, 2);
-  const economic = nearestAlternatives.filter(
-    (item) =>
-      item.type !== "renew_contract" &&
-      item.type !== "renew_residence_permit",
-  );
-  nearestAlternatives = [...economic, ...renewals];
-
   const informationalSuggestions: InformationalSuggestion[] = [];
-  if (
+  if (unresolvedPatientData.actionMessage) {
+    informationalSuggestions.push({
+      type: "complete_missing_data",
+      message: unresolvedPatientData.actionMessage,
+    });
+  } else if (
     input.patient.employmentType === "temporary_employee" ||
     input.patient.employmentType === "student" ||
     input.patient.employmentType === "housewife"

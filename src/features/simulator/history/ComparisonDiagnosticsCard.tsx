@@ -54,6 +54,12 @@ export function ComparisonDiagnosticsCard({
   const conditional = diagnostics.nearestAlternatives.filter(
     (item) => item.certainty === "requires_verification",
   );
+  const missingDataActions = diagnostics.informationalSuggestions.filter(
+    (item) => item.type === "complete_missing_data",
+  );
+  const otherSuggestions = diagnostics.informationalSuggestions.filter(
+    (item) => item.type !== "complete_missing_data",
+  );
 
   return (
     <Card
@@ -103,7 +109,16 @@ export function ComparisonDiagnosticsCard({
           <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">
             Possibili strade da valutare
           </p>
-          {economicAlternatives.length === 0 ? (
+          {missingDataActions.length > 0 ? (
+            <ul className="list-disc space-y-2 pl-5">
+              {missingDataActions.map((item) => (
+                <li key={item.message}>
+                  <span className="font-medium">Azione richiesta:</span>{" "}
+                  {item.message}
+                </li>
+              ))}
+            </ul>
+          ) : economicAlternatives.length === 0 ? (
             <p>{emptyEconomicMessage(diagnostics)}</p>
           ) : (
             <ul className="list-disc space-y-2 pl-5">
@@ -115,7 +130,7 @@ export function ComparisonDiagnosticsCard({
               ))}
             </ul>
           )}
-          {conditional.length > 0 ? (
+          {missingDataActions.length === 0 && conditional.length > 0 ? (
             <ul className="mt-2 list-disc space-y-2 pl-5">
               {conditional.map((item, index) => (
                 <li key={`${item.type}-${item.durationMonths}-${index}`}>
@@ -127,10 +142,10 @@ export function ComparisonDiagnosticsCard({
           ) : null}
         </div>
 
-        {diagnostics.informationalSuggestions.length > 0 ? (
+        {otherSuggestions.length > 0 ? (
           <div className="space-y-1 rounded-md border border-border bg-background/70 px-3 py-2 text-xs text-muted-foreground">
-            {diagnostics.informationalSuggestions.map((item) => (
-              <p key={item.type}>{item.message}</p>
+            {otherSuggestions.map((item) => (
+              <p key={`${item.type}-${item.message}`}>{item.message}</p>
             ))}
           </div>
         ) : null}

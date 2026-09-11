@@ -282,7 +282,82 @@ export const updateSimulationPatientData = mutation({
       args.employmentType === "permanent_employee" ||
       args.employmentType === "temporary_employee";
 
-    const payload = {
+    if (args.simulationId) {
+      const simulation = await ctx.db.get(args.simulationId);
+      if (!simulation) {
+        throw new Error("Simulazione non trovata.");
+      }
+      if (
+        actor.role !== "admin" &&
+        simulation.ownerUserId !== args.actorUserId
+      ) {
+        throw new Error(
+          "Non sei autorizzato a modificare questa simulazione.",
+        );
+      }
+
+      // Patch esplicito: non azzerare campi preservabili se assenti dal payload.
+      const employmentStartDate = storesEmploymentStart
+        ? (args.employmentStartDate ?? simulation.employmentStartDate)
+        : undefined;
+      const employmentSeniorityMonths = storesEmploymentStart
+        ? (args.employmentSeniorityMonths ?? simulation.employmentSeniorityMonths)
+        : undefined;
+
+      await ctx.db.patch(args.simulationId, {
+        patientFirstName,
+        patientLastName,
+        network: args.network,
+        requestedAmount: args.requestedAmount,
+        targetInstallment: args.targetInstallment,
+        patientAge: args.patientAge,
+        employmentType: args.employmentType,
+        temporaryContractExpiry:
+          args.employmentType === "temporary_employee"
+            ? (args.temporaryContractExpiry ??
+              simulation.temporaryContractExpiry)
+            : undefined,
+        isNonEuCitizen: args.isNonEuCitizen,
+        residencePermitExpiry: args.isNonEuCitizen
+          ? (args.residencePermitExpiry ?? simulation.residencePermitExpiry)
+          : undefined,
+        hasResidencePermitRenewalReceiptOnly: args.isNonEuCitizen
+          ? (args.hasResidencePermitRenewalReceiptOnly ??
+            simulation.hasResidencePermitRenewalReceiptOnly)
+          : undefined,
+        employmentStartDate,
+        employmentSeniorityMonths,
+        hasGuarantor:
+          args.hasGuarantor !== undefined
+            ? args.hasGuarantor
+            : simulation.hasGuarantor,
+        patientRequestsZeroInterest:
+          args.patientRequestsZeroInterest !== undefined
+            ? args.patientRequestsZeroInterest === true
+            : simulation.patientRequestsZeroInterest === true,
+        requestedDurationMonths:
+          args.requestedDurationMonths !== undefined
+            ? args.requestedDurationMonths
+            : simulation.requestedDurationMonths,
+        preferredFirstInstallmentDelayDays:
+          args.preferredFirstInstallmentDelayDays !== undefined
+            ? args.preferredFirstInstallmentDelayDays
+            : simulation.preferredFirstInstallmentDelayDays,
+        lastInputUpdatedAt: now,
+        updatedAt: now,
+      });
+      return args.simulationId;
+    }
+
+    if (actor.role !== "cm") {
+      throw new Error("Solo i Clinic Manager possono creare simulazioni.");
+    }
+
+    return await ctx.db.insert("simulations", {
+      ownerUserId: args.actorUserId,
+      status: "draft",
+      comparisonStatus: "not_started",
+      createdAt: now,
       patientFirstName,
       patientLastName,
       network: args.network,
@@ -314,35 +389,6 @@ export const updateSimulationPatientData = mutation({
         args.preferredFirstInstallmentDelayDays,
       lastInputUpdatedAt: now,
       updatedAt: now,
-    };
-
-    if (args.simulationId) {
-      const simulation = await ctx.db.get(args.simulationId);
-      if (!simulation) {
-        throw new Error("Simulazione non trovata.");
-      }
-      if (
-        actor.role !== "admin" &&
-        simulation.ownerUserId !== args.actorUserId
-      ) {
-        throw new Error(
-          "Non sei autorizzato a modificare questa simulazione.",
-        );
-      }
-      await ctx.db.patch(args.simulationId, payload);
-      return args.simulationId;
-    }
-
-    if (actor.role !== "cm") {
-      throw new Error("Solo i Clinic Manager possono creare simulazioni.");
-    }
-
-    return await ctx.db.insert("simulations", {
-      ownerUserId: args.actorUserId,
-      status: "draft",
-      comparisonStatus: "not_started",
-      createdAt: now,
-      ...payload,
     });
   },
 });

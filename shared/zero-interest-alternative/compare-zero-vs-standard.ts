@@ -8,7 +8,7 @@ import {
 } from "./find-equivalent-discount.ts";
 import {
   DOCTOR_COMPENSATION_NOTE,
-  NO_ZERO_INTEREST_ON_DURATION_MESSAGE,
+  NO_ZERO_INTEREST_COMPATIBLE_MESSAGE,
   ZERO_INTEREST_ALTERNATIVE_CONFIG,
   ZERO_INTEREST_ALTERNATIVE_VERSION,
   ZERO_VS_STANDARD_AUTONOMY_WARNING,
@@ -241,7 +241,7 @@ export function analyzeZeroInterestAlternative(input: {
       hasCompatibleZeroInterest: false,
       hasCompatibleSubsidized,
       alternatives: [],
-      messages: [NO_ZERO_INTEREST_ON_DURATION_MESSAGE],
+      messages: [NO_ZERO_INTEREST_COMPATIBLE_MESSAGE],
     };
   }
 

@@ -463,6 +463,107 @@ describe("resolveComparisonDiagnostics – UI wiring", () => {
   });
 });
 
+describe("missing employmentStartDate → no duration alternatives", () => {
+  const calculationDate = new Date(2026, 8, 11).getTime();
+
+  it("TI senza data assunzione → nessuna alternativa durata/importo/prodotto", () => {
+    const { result, diagnostics } = runCase({
+      calculationDate,
+      patient: {
+        age: 55,
+        employmentType: "permanent_employee",
+        isNonEuCitizen: false,
+        // employmentStartDate assente
+      },
+      amount: 4000,
+      durationMonths: 18,
+    });
+
+    expect(result.compatibleSolutions).toHaveLength(0);
+    expect(result.verificationRequiredSolutions.length).toBeGreaterThan(0);
+
+    const economic = diagnostics.nearestAlternatives.filter(
+      (item) =>
+        item.type === "shorter_duration" ||
+        item.type === "lower_amount" ||
+        item.type === "lower_amount_and_shorter_duration",
+    );
+    expect(economic).toHaveLength(0);
+    expect(diagnostics.nearestAlternatives).toHaveLength(0);
+
+    const action = diagnostics.informationalSuggestions.find(
+      (item) => item.type === "complete_missing_data",
+    );
+    expect(action?.message).toMatch(/Completa la data di assunzione/i);
+    expect(action?.message).toMatch(/ricalcolare/i);
+    expect(action?.message).not.toMatch(/12 mesi|13 mesi|14 mesi/);
+  });
+
+  it("persisted path: data assunzione mancante → niente alternative economiche", () => {
+    const diagnostics = resolveComparisonDiagnostics({
+      hasCompatibleSolutions: false,
+      verificationRequiredCount: 2,
+      calculationDate,
+      requestedAmount: 4000,
+      selectedDurationMonths: 24,
+      firstInstallmentDelayDays: 30,
+      patient: {
+        age: 40,
+        employmentType: "permanent_employee",
+        isNonEuCitizen: false,
+      },
+      solutions: [
+        {
+          resultGroup: "verification_required",
+          companyShortName: "Agos",
+          compatibilitySnapshot: {
+            verificationRules: [
+              {
+                ruleType: "minimum_employment_seniority_months",
+                message:
+                  "Data di assunzione non indicata: verificare che l’anzianità lavorativa sia di almeno 12 mesi.",
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    expect(diagnostics?.nearestAlternatives).toEqual([]);
+    expect(
+      diagnostics?.informationalSuggestions.some(
+        (item) =>
+          item.type === "complete_missing_data" &&
+          /Completa la data di assunzione/i.test(item.message),
+      ),
+    ).toBe(true);
+  });
+
+  it("contratto TD reale troppo vicino → durata breve resta alternativa valida", () => {
+    const contractExpiry = new Date(2026, 10, 11).getTime();
+    const { diagnostics } = runCase({
+      calculationDate,
+      patient: {
+        age: 40,
+        employmentType: "temporary_employee",
+        temporaryContractExpiry: contractExpiry,
+        isNonEuCitizen: false,
+        employmentStartDate: "2020-01-01",
+        employmentSeniorityMonths: 80,
+      },
+      amount: 1500,
+      durationMonths: 24,
+    });
+
+    // Non deve essere trattato come missing patient data
+    expect(
+      diagnostics.informationalSuggestions.some(
+        (item) => item.type === "complete_missing_data",
+      ),
+    ).toBe(false);
+  });
+});
+
 describe("duration options UI", () => {
   it("non genera automaticamente 6..84 e include Pass 3–12 quando pertinente", () => {
     const options = collectComparisonDurationOptions({

@@ -55,3 +55,8 @@ export {
   resolveComparisonDiagnostics,
 } from "./from-persisted-run.ts";
 export type { PersistedSolutionForDiagnostics } from "./from-persisted-run.ts";
+export {
+  COMPLETE_EMPLOYMENT_START_DATE_MESSAGE,
+  isEmploymentSeniorityUndeterminable,
+  resolveUnresolvedPatientDataGuidance,
+} from "./unresolved-patient-data.ts";

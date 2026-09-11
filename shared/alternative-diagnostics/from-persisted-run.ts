@@ -12,6 +12,7 @@ import {
   type ComparisonDiagnostics,
   type InformationalSuggestion,
 } from "./diagnostic-types.ts";
+import { resolveUnresolvedPatientDataGuidance } from "./unresolved-patient-data.ts";
 
 export type PersistedSolutionForDiagnostics = {
   resultGroup: "compatible" | "verification_required" | "not_compatible";
@@ -100,7 +101,34 @@ export function buildDiagnosticsFromPersistedComparison(input: {
     failedRules,
   });
 
+  const unresolvedPatientData = resolveUnresolvedPatientDataGuidance({
+    patient: input.patient,
+    failedRules,
+    primaryConstraint,
+  });
+
   const nearestAlternatives: AlternativeScenario[] = [];
+  const informationalSuggestions: InformationalSuggestion[] = [];
+
+  if (unresolvedPatientData.suppressesEconomicAlternatives) {
+    if (unresolvedPatientData.actionMessage) {
+      informationalSuggestions.push({
+        type: "complete_missing_data",
+        message: unresolvedPatientData.actionMessage,
+      });
+    }
+    return {
+      version: ALTERNATIVE_DIAGNOSTICS_VERSION,
+      hasCompatibleSolutions: false,
+      verificationRequiredCount,
+      blockingConstraints,
+      primaryConstraint,
+      nearestAlternatives: [],
+      informationalSuggestions,
+      documentationRequirements,
+    };
+  }
+
   const end = calculateFinancingEndDate({
     calculationDate: input.calculationDate,
     durationMonths: input.selectedDurationMonths,
@@ -153,7 +181,6 @@ export function buildDiagnosticsFromPersistedComparison(input: {
     });
   }
 
-  const informationalSuggestions: InformationalSuggestion[] = [];
   if (
     input.patient.employmentType === "temporary_employee" ||
     input.patient.employmentType === "student" ||

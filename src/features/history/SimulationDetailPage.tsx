@@ -1,21 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingState } from "@/components/common/LoadingState";
@@ -25,61 +16,19 @@ import {
   StatusBadge,
 } from "@/components/common/StatusBadge";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
-import { NETWORKS } from "@/lib/constants/app";
 import {
-  COMMON_FIRST_INSTALLMENT_DELAYS,
   EMPLOYMENT_TYPE_LABELS,
-  EMPLOYMENT_TYPES,
-  type EmploymentType,
 } from "@/lib/constants/financial";
-import {
-  formatCurrency,
-  formatDateTime,
-  parseItalianAmount,
-} from "@/lib/formatting/currency";
-import { patientSimulationSchema } from "@/lib/validation/schemas";
+import { formatCurrency, formatDateTime } from "@/lib/formatting/currency";
 import { ProposedSolutionBadge } from "@/features/simulator/history/ProposedSolutionBadge";
 import { SimulationComparisonWorkspace } from "@/features/simulator/history/SimulationComparisonWorkspace";
-
-type FormValues = {
-  patientFirstName: string;
-  patientLastName: string;
-  network: "PCG" | "DES";
-  patientAge: string;
-  employmentType: EmploymentType | "";
-  temporaryContractExpiry: string;
-  isNonEuCitizen: "yes" | "no";
-  residencePermitExpiry: string;
-  patientRequestsZeroInterest: boolean;
-  requestedAmount: string;
-  targetInstallment: string;
-  requestedDurationMonths: string;
-  preferredFirstInstallmentDelayDays: string;
-};
-
-function toDateInput(value?: number): string {
-  if (!value) return "";
-  const date = new Date(value);
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function parseDateInput(value: string): number | undefined {
-  if (!value.trim()) return undefined;
-  const date = new Date(`${value}T12:00:00`);
-  if (Number.isNaN(date.getTime())) return undefined;
-  return date.getTime();
-}
-
-function formatAmountInput(value?: number): string {
-  if (value === undefined) return "";
-  return value.toLocaleString("it-IT", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
+import { SimulationFormFields } from "@/features/simulator/SimulationFormFields";
+import {
+  parseSimulationFormValues,
+  SIMULATION_FORM_DEFAULT_VALUES,
+  simulationToFormValues,
+  type SimulationFormValues,
+} from "@/features/simulator/simulationFormModel";
 
 export function SimulationDetailPage() {
   const { simulationId } = useParams<{ simulationId: string }>();
@@ -101,50 +50,13 @@ export function SimulationDetailPage() {
       : "skip",
   );
 
-  const form = useForm<FormValues>({
-    defaultValues: {
-      patientFirstName: "",
-      patientLastName: "",
-      network: "PCG",
-      patientAge: "",
-      employmentType: "",
-      temporaryContractExpiry: "",
-      isNonEuCitizen: "no",
-      residencePermitExpiry: "",
-      patientRequestsZeroInterest: false,
-      requestedAmount: "",
-      targetInstallment: "",
-      requestedDurationMonths: "",
-      preferredFirstInstallmentDelayDays: "30",
-    },
+  const form = useForm<SimulationFormValues>({
+    defaultValues: SIMULATION_FORM_DEFAULT_VALUES,
   });
 
   useEffect(() => {
     if (!simulation) return;
-    form.reset({
-      patientFirstName: simulation.patientFirstName,
-      patientLastName: simulation.patientLastName,
-      network: simulation.network,
-      patientAge:
-        simulation.patientAge !== undefined
-          ? String(simulation.patientAge)
-          : "",
-      employmentType: simulation.employmentType ?? "",
-      temporaryContractExpiry: toDateInput(simulation.temporaryContractExpiry),
-      isNonEuCitizen: simulation.isNonEuCitizen ? "yes" : "no",
-      residencePermitExpiry: toDateInput(simulation.residencePermitExpiry),
-      patientRequestsZeroInterest:
-        simulation.patientRequestsZeroInterest === true,
-      requestedAmount: formatAmountInput(simulation.requestedAmount),
-      targetInstallment: formatAmountInput(simulation.targetInstallment),
-      requestedDurationMonths:
-        simulation.requestedDurationMonths !== undefined
-          ? String(simulation.requestedDurationMonths)
-          : "",
-      preferredFirstInstallmentDelayDays: String(
-        simulation.preferredFirstInstallmentDelayDays ?? 30,
-      ),
-    });
+    form.reset(simulationToFormValues(simulation));
   }, [simulation, form]);
 
   if (simulation === undefined) {
@@ -160,39 +72,15 @@ export function SimulationDetailPage() {
     );
   }
 
-  const employmentType = form.watch("employmentType");
-  const isNonEuCitizen = form.watch("isNonEuCitizen");
   const employmentLabel = simulation.employmentType
     ? EMPLOYMENT_TYPE_LABELS[simulation.employmentType]
     : "—";
 
   const onSave = form.handleSubmit(async (values) => {
     if (!userId) return;
-    const parsed = patientSimulationSchema.safeParse({
-      patientFirstName: values.patientFirstName,
-      patientLastName: values.patientLastName,
-      network: values.network,
-      patientAge: Number(values.patientAge),
-      employmentType: values.employmentType || undefined,
-      temporaryContractExpiry: parseDateInput(values.temporaryContractExpiry),
-      isNonEuCitizen: values.isNonEuCitizen === "yes",
-      residencePermitExpiry: parseDateInput(values.residencePermitExpiry),
-      patientRequestsZeroInterest: values.patientRequestsZeroInterest,
-      requestedAmount: parseItalianAmount(values.requestedAmount),
-      targetInstallment: values.targetInstallment.trim()
-        ? parseItalianAmount(values.targetInstallment)
-        : undefined,
-      requestedDurationMonths: values.requestedDurationMonths.trim()
-        ? Number(values.requestedDurationMonths)
-        : undefined,
-      preferredFirstInstallmentDelayDays: values.preferredFirstInstallmentDelayDays
-        ? Number(values.preferredFirstInstallmentDelayDays)
-        : undefined,
-    });
+    const parsed = parseSimulationFormValues(values);
     if (!parsed.success) {
-      toast.error(
-        parsed.error.issues[0]?.message ?? "Controlla i dati inseriti.",
-      );
+      toast.error(parsed.message);
       return;
     }
     setIsSaving(true);
@@ -277,6 +165,9 @@ export function SimulationDetailPage() {
               {showPatientDetails ? (
                 <p className="text-xs text-muted-foreground">
                   Ultimo aggiornamento {formatDateTime(simulation.updatedAt)}
+                  {simulation.employmentStartDate
+                    ? ` · Assunzione ${simulation.employmentStartDate}`
+                    : ""}
                   {simulation.targetInstallment !== undefined
                     ? ` · Rata obiettivo ${formatCurrency(simulation.targetInstallment)}`
                     : ""}
@@ -287,159 +178,18 @@ export function SimulationDetailPage() {
               ) : null}
             </>
           ) : (
-            <form className="grid gap-3 sm:grid-cols-2" onSubmit={onSave}>
-              <div className="space-y-2">
-                <Label>Nome</Label>
-                <Input {...form.register("patientFirstName")} />
-              </div>
-              <div className="space-y-2">
-                <Label>Cognome</Label>
-                <Input {...form.register("patientLastName")} />
-              </div>
-              <div className="space-y-2">
-                <Label>Età</Label>
-                <Input inputMode="numeric" {...form.register("patientAge")} />
-              </div>
-              <div className="space-y-2">
-                <Label>Rete</Label>
-                <Controller
-                  control={form.control}
-                  name="network"
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {NETWORKS.map((network) => (
-                          <SelectItem key={network} value={network}>
-                            {network}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Condizione lavorativa</Label>
-                <Controller
-                  control={form.control}
-                  name="employmentType"
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {EMPLOYMENT_TYPES.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {EMPLOYMENT_TYPE_LABELS[type]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Extracomunitario</Label>
-                <Controller
-                  control={form.control}
-                  name="isNonEuCitizen"
-                  render={({ field }) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange as (value: string) => void}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="no">No</SelectItem>
-                        <SelectItem value="yes">Sì</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-              {employmentType === "temporary_employee" ? (
-                <div className="space-y-2">
-                  <Label>Scadenza contratto</Label>
-                  <Input
-                    type="date"
-                    {...form.register("temporaryContractExpiry")}
-                  />
-                </div>
-              ) : null}
-              {isNonEuCitizen === "yes" ? (
-                <div className="space-y-2">
-                  <Label>Scadenza permesso</Label>
-                  <Input
-                    type="date"
-                    {...form.register("residencePermitExpiry")}
-                  />
-                </div>
-              ) : null}
-              <div className="space-y-2">
-                <Label>Importo richiesto (€)</Label>
-                <Input {...form.register("requestedAmount")} />
-              </div>
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={form.watch("patientRequestsZeroInterest")}
-                  onChange={(e) =>
-                    form.setValue(
-                      "patientRequestsZeroInterest",
-                      e.target.checked,
-                    )
-                  }
-                />
-                <span>Il paziente richiede espressamente il tasso zero</span>
-              </label>
-              <div className="space-y-2">
-                <Label>Rata obiettivo (€)</Label>
-                <Input {...form.register("targetInstallment")} />
-              </div>
-              <div className="space-y-2">
-                <Label>Durata desiderata</Label>
-                <Input {...form.register("requestedDurationMonths")} />
-              </div>
-              <div className="space-y-2">
-                <Label>Prima rata</Label>
-                <Controller
-                  control={form.control}
-                  name="preferredFirstInstallmentDelayDays"
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {COMMON_FIRST_INSTALLMENT_DELAYS.map((days) => (
-                          <SelectItem key={days} value={String(days)}>
-                            {days} giorni
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-              <div className="flex gap-2 sm:col-span-2">
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? "Salvataggio…" : "Salva dati"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditing(false)}
-                >
-                  Annulla
-                </Button>
-              </div>
+            <form onSubmit={onSave} data-testid="simulation-edit-form">
+              <p className="mb-3 text-sm font-medium">Modifica dati simulazione</p>
+              <SimulationFormFields
+                form={form}
+                idPrefix="edit"
+                submitLabel={isSaving ? "Salvataggio…" : "Salva dati"}
+                isSubmitting={isSaving}
+                onCancel={() => {
+                  form.reset(simulationToFormValues(simulation));
+                  setEditing(false);
+                }}
+              />
             </form>
           )}
         </CardContent>
@@ -447,7 +197,10 @@ export function SimulationDetailPage() {
 
       <SimulationComparisonWorkspace
         simulation={simulation}
-        onEditData={() => setEditing(true)}
+        onEditData={() => {
+          form.reset(simulationToFormValues(simulation));
+          setEditing(true);
+        }}
       />
     </div>
   );
