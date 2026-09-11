@@ -1,6 +1,9 @@
 import {
   calculateFinancialSolution,
-  generateAllowedDurations,
+  findDurationTerm,
+  hasDurationTerms,
+  resolveAllowedDurations,
+  type DurationTerm,
 } from "../financial-engine/index.ts";
 import type { FinancialCalculationResult } from "../financial-engine/types.ts";
 import { evaluateCompatibility } from "./compatibility.ts";
@@ -50,11 +53,15 @@ export type RuntimeFinancialTable = {
   minimumDurationMonths: number;
   maximumDurationMonths: number;
   durationStepMonths: number;
+  durationTerms?: DurationTerm[];
   customerTanPercent: number;
   openingFeeType: "none" | "fixed" | "percentage";
   openingFeeValue: number;
   collectionFeePerInstallment: number;
+  installmentFeeType?: "none" | "fixed" | "percentage_of_requested_amount";
+  installmentFeeValue?: number;
   internalCostPercentAt24Months?: number;
+  internalCostBase?: "requested_amount" | "financed_amount";
   firstInstallmentDelayDays: number[];
   requiresManagerAuthorizationNotice: boolean;
   isActive: boolean;
@@ -97,6 +104,74 @@ export type ComparisonBuildInput = {
   priorities: RuntimePriority[];
   internalMessages: RuntimeInternalMessage[];
 };
+
+export type DurationTermSnapshot = {
+  durationMonths: number;
+  minimumAmount: number;
+  maximumAmount: number;
+  customerTanPercent: number;
+  internalCostPercent?: number;
+};
+
+export type ResolvedTableEconomics = {
+  customerTanPercent: number;
+  internalCostPercentApplied?: number;
+  internalCostPercentAt24Months?: number;
+  durationTermSnapshot?: DurationTermSnapshot;
+  minimumAmount: number;
+  maximumAmount: number;
+};
+
+/**
+ * Risolve TAN, limiti importo e costo aziendale per la durata selezionata.
+ * Con durationTerms: il termine è fonte di verità.
+ */
+export function resolveTableEconomicsForDuration(
+  table: RuntimeFinancialTable,
+  durationMonths: number,
+): ResolvedTableEconomics | null {
+  if (hasDurationTerms(table.durationTerms)) {
+    const term = findDurationTerm(table.durationTerms, durationMonths);
+    if (!term) {
+      return null;
+    }
+    const customerTanPercent =
+      term.customerTanPercent ?? table.customerTanPercent;
+    const snapshot: DurationTermSnapshot = {
+      durationMonths: term.durationMonths,
+      minimumAmount: term.minimumAmount,
+      maximumAmount: term.maximumAmount,
+      customerTanPercent,
+    };
+    if (term.internalCostPercent !== undefined) {
+      snapshot.internalCostPercent = term.internalCostPercent;
+    }
+
+    const resolved: ResolvedTableEconomics = {
+      customerTanPercent,
+      minimumAmount: term.minimumAmount,
+      maximumAmount: term.maximumAmount,
+      durationTermSnapshot: snapshot,
+    };
+
+    if (term.internalCostPercent !== undefined) {
+      resolved.internalCostPercentApplied = term.internalCostPercent;
+    } else if (table.internalCostPercentAt24Months !== undefined) {
+      // LEGACY FALLBACK only if term does not specify exact cost
+      resolved.internalCostPercentAt24Months =
+        table.internalCostPercentAt24Months;
+    }
+
+    return resolved;
+  }
+
+  return {
+    customerTanPercent: table.customerTanPercent,
+    internalCostPercentAt24Months: table.internalCostPercentAt24Months,
+    minimumAmount: table.minimumAmount,
+    maximumAmount: table.maximumAmount,
+  };
+}
 
 function emptyCompatibility(
   reasons: string[],
@@ -182,19 +257,24 @@ function technicalCheck(
   delayDays: number,
 ): string[] {
   const reasons: string[] = [];
-  if (requestedAmount < table.minimumAmount) {
-    reasons.push("Importo inferiore al minimo della tabella.");
-  }
-  if (requestedAmount > table.maximumAmount) {
-    reasons.push("Importo superiore al massimo della tabella.");
-  }
-  const durations = generateAllowedDurations({
-    minimumDurationMonths: table.minimumDurationMonths,
-    maximumDurationMonths: table.maximumDurationMonths,
-    durationStepMonths: table.durationStepMonths,
-  });
-  if (!durations.includes(durationMonths)) {
+  const economics = resolveTableEconomicsForDuration(table, durationMonths);
+
+  if (!economics) {
     reasons.push("Durata non prevista dalla tabella.");
+  } else {
+    if (requestedAmount < economics.minimumAmount) {
+      reasons.push("Importo inferiore al minimo della tabella.");
+    }
+    if (requestedAmount > economics.maximumAmount) {
+      reasons.push("Importo superiore al massimo della tabella.");
+    }
+  }
+
+  const durations = resolveAllowedDurations(table);
+  if (!durations.includes(durationMonths)) {
+    if (!reasons.includes("Durata non prevista dalla tabella.")) {
+      reasons.push("Durata non prevista dalla tabella.");
+    }
   }
   if (!table.firstInstallmentDelayDays.includes(delayDays)) {
     reasons.push(
@@ -212,17 +292,44 @@ function buildSolutionId(
   return `${tableId}:${durationMonths}:${delayDays}`;
 }
 
+function runFinancialCalculation(
+  table: RuntimeFinancialTable,
+  requestedAmount: number,
+  durationMonths: number,
+  delayDays: number,
+): {
+  calculation: FinancialCalculationResult;
+  economics: ResolvedTableEconomics;
+} {
+  const economics = resolveTableEconomicsForDuration(table, durationMonths);
+  if (!economics) {
+    throw new Error("Durata non prevista dalla tabella.");
+  }
+
+  const calculation = calculateFinancialSolution({
+    requestedAmount,
+    durationMonths,
+    customerTanPercent: economics.customerTanPercent,
+    openingFeeType: table.openingFeeType,
+    openingFeeValue: table.openingFeeValue,
+    collectionFeePerInstallment: table.collectionFeePerInstallment,
+    installmentFeeType: table.installmentFeeType,
+    installmentFeeValue: table.installmentFeeValue,
+    internalCostPercentApplied: economics.internalCostPercentApplied,
+    internalCostPercentAt24Months: economics.internalCostPercentAt24Months,
+    internalCostBase: table.internalCostBase,
+    firstInstallmentDelayDays: delayDays,
+  });
+
+  return { calculation, economics };
+}
+
 export function collectAvailableDurations(
   tables: RuntimeFinancialTable[],
 ): number[] {
   const set = new Set<number>();
   for (const table of tables) {
-    const durations = generateAllowedDurations({
-      minimumDurationMonths: table.minimumDurationMonths,
-      maximumDurationMonths: table.maximumDurationMonths,
-      durationStepMonths: table.durationStepMonths,
-    });
-    for (const duration of durations) {
+    for (const duration of resolveAllowedDurations(table)) {
       set.add(duration);
     }
   }
@@ -274,11 +381,7 @@ export function resolveInitialDuration(input: {
       | undefined;
 
     for (const table of input.tables) {
-      const durations = generateAllowedDurations({
-        minimumDurationMonths: table.minimumDurationMonths,
-        maximumDurationMonths: table.maximumDurationMonths,
-        durationStepMonths: table.durationStepMonths,
-      });
+      const durations = resolveAllowedDurations(table);
 
       for (const duration of durations) {
         const technical = technicalCheck(
@@ -291,16 +394,12 @@ export function resolveInitialDuration(input: {
 
         let calculation: FinancialCalculationResult;
         try {
-          calculation = calculateFinancialSolution({
-            requestedAmount: input.requestedAmount,
-            durationMonths: duration,
-            customerTanPercent: table.customerTanPercent,
-            openingFeeType: table.openingFeeType,
-            openingFeeValue: table.openingFeeValue,
-            collectionFeePerInstallment: table.collectionFeePerInstallment,
-            internalCostPercentAt24Months: table.internalCostPercentAt24Months,
-            firstInstallmentDelayDays: input.delayDays,
-          });
+          calculation = runFinancialCalculation(
+            table,
+            input.requestedAmount,
+            duration,
+            input.delayDays,
+          ).calculation;
         } catch {
           continue;
         }
@@ -400,22 +499,21 @@ export function buildComparisonResult(
     const messageIds = resolveMessages(table, input.internalMessages);
 
     let calculation: FinancialCalculationResult | null = null;
+    let durationTermSnapshot: DurationTermSnapshot | undefined;
     let compatibility: CompatibilityEvaluation;
 
     if (technicalExclusionReasons.length > 0) {
       compatibility = emptyCompatibility(technicalExclusionReasons);
     } else {
       try {
-        calculation = calculateFinancialSolution({
-          requestedAmount: input.requestedAmount,
-          durationMonths: selectedDurationMonths,
-          customerTanPercent: table.customerTanPercent,
-          openingFeeType: table.openingFeeType,
-          openingFeeValue: table.openingFeeValue,
-          collectionFeePerInstallment: table.collectionFeePerInstallment,
-          internalCostPercentAt24Months: table.internalCostPercentAt24Months,
-          firstInstallmentDelayDays: delayDays,
-        });
+        const ran = runFinancialCalculation(
+          table,
+          input.requestedAmount,
+          selectedDurationMonths,
+          delayDays,
+        );
+        calculation = ran.calculation;
+        durationTermSnapshot = ran.economics.durationTermSnapshot;
         compatibility = evaluateCompatibility({
           patient: input.patient,
           requestedAmount: input.requestedAmount,
@@ -488,6 +586,7 @@ export function buildComparisonResult(
       distanceFromTargetInstallment,
       technicalExclusionReasons,
       durationAlternatives,
+      durationTermSnapshot,
     });
   }
 
@@ -533,11 +632,7 @@ export function buildDurationAlternatives(input: {
   compatibility: CompatibilityEvaluation;
   technicalExclusionReasons: string[];
 }> {
-  const durations = generateAllowedDurations({
-    minimumDurationMonths: input.table.minimumDurationMonths,
-    maximumDurationMonths: input.table.maximumDurationMonths,
-    durationStepMonths: input.table.durationStepMonths,
-  });
+  const durations = resolveAllowedDurations(input.table);
 
   return durations.map((durationMonths) => {
     const technicalExclusionReasons = technicalCheck(
@@ -557,17 +652,12 @@ export function buildDurationAlternatives(input: {
     }
 
     try {
-      const calculation = calculateFinancialSolution({
-        requestedAmount: input.requestedAmount,
+      const calculation = runFinancialCalculation(
+        input.table,
+        input.requestedAmount,
         durationMonths,
-        customerTanPercent: input.table.customerTanPercent,
-        openingFeeType: input.table.openingFeeType,
-        openingFeeValue: input.table.openingFeeValue,
-        collectionFeePerInstallment: input.table.collectionFeePerInstallment,
-        internalCostPercentAt24Months:
-          input.table.internalCostPercentAt24Months,
-        firstInstallmentDelayDays: input.delayDays,
-      });
+        input.delayDays,
+      ).calculation;
       const compatibility = evaluateCompatibility({
         patient: input.patient,
         requestedAmount: input.requestedAmount,

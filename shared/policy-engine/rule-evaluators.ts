@@ -193,7 +193,8 @@ export function evaluatePolicyRule(
         return verification(
           rule,
           "Scadenza contratto determinata mancante",
-          rule.verificationMessage ?? "Indicare la scadenza del contratto.",
+          rule.verificationMessage ??
+            "Per un contratto a tempo determinato è necessario conoscere la data di scadenza del contratto per verificare che il finanziamento termini prima.",
         );
       }
       if (rule.operator !== "date_after_financing_end") {
@@ -215,11 +216,16 @@ export function evaluatePolicyRule(
       if (!patient.isNonEuCitizen) {
         return notApplicable(rule);
       }
+      // Con sola ricevuta di rinnovo la scadenza del permesso non è utilizzabile qui.
+      if (patient.hasResidencePermitRenewalReceiptOnly === true) {
+        return notApplicable(rule);
+      }
       if (patient.residencePermitExpiry === undefined) {
         return verification(
           rule,
           "Scadenza permesso di soggiorno mancante",
-          rule.verificationMessage ?? "Indicare la scadenza del permesso.",
+          rule.verificationMessage ??
+            "Per un paziente extracomunitario è necessario conoscere la data di scadenza del permesso di soggiorno per verificare che il finanziamento termini entro la validità del permesso.",
         );
       }
       if (rule.operator !== "date_after_financing_end") {
@@ -235,6 +241,104 @@ export function evaluatePolicyRule(
       requiredExpiry.setMonth(requiredExpiry.getMonth() + bufferMonths);
       const ok = patient.residencePermitExpiry >= requiredExpiry.getTime();
       return ok ? passed(rule) : failed(rule);
+    }
+
+    case "renewal_receipt_allowed": {
+      if (!patient.isNonEuCitizen) {
+        return notApplicable(rule);
+      }
+      if (patient.hasResidencePermitRenewalReceiptOnly !== true) {
+        return notApplicable(rule);
+      }
+      if (rule.booleanValue === undefined) {
+        return verification(rule, "booleanValue mancante");
+      }
+      if (rule.booleanValue === false) {
+        return failed(rule);
+      }
+      return verification(
+        rule,
+        "Ricevuta di rinnovo dichiarata: valutazione documentale della finanziaria",
+        rule.verificationMessage ?? rule.failureMessage,
+      );
+    }
+
+    case "minimum_employment_seniority_months": {
+      if (patient.employmentType !== "permanent_employee") {
+        return notApplicable(rule);
+      }
+      if (rule.numericValue === undefined) {
+        return verification(rule, "numericValue mancante");
+      }
+      if (patient.employmentSeniorityMonths === undefined) {
+        return verification(
+          rule,
+          "Anzianità lavorativa mancante",
+          rule.verificationMessage ??
+            "Indicare l’anzianità lavorativa in mesi per il tempo indeterminato.",
+        );
+      }
+      const operator = rule.operator || "greater_than_or_equal";
+      const result = compareNumber(
+        patient.employmentSeniorityMonths,
+        operator,
+        rule.numericValue,
+      );
+      if (result === null) {
+        return unsupportedOperator(rule);
+      }
+      // Indicazione operativa: sotto soglia → verifica, non blocco assoluto.
+      return result
+        ? passed(rule)
+        : verification(
+            rule,
+            "Anzianità lavorativa inferiore alla soglia operativa",
+            rule.verificationMessage ?? rule.failureMessage,
+          );
+    }
+
+    case "maximum_amount_for_employment_types": {
+      if (!rule.stringValues || rule.stringValues.length === 0) {
+        return verification(rule, "stringValues assente o vuoto");
+      }
+      if (!rule.stringValues.includes(patient.employmentType)) {
+        return notApplicable(rule);
+      }
+      if (rule.numericValue === undefined) {
+        return verification(rule, "numericValue mancante");
+      }
+      const operator = rule.operator || "less_than_or_equal";
+      const result = compareNumber(
+        ctx.requestedAmount,
+        operator,
+        rule.numericValue,
+      );
+      if (result === null) {
+        return unsupportedOperator(rule);
+      }
+      return result ? passed(rule) : failed(rule);
+    }
+
+    case "guarantor_required_for_employment_types": {
+      if (!rule.stringValues || rule.stringValues.length === 0) {
+        return verification(rule, "stringValues assente o vuoto");
+      }
+      if (!rule.stringValues.includes(patient.employmentType)) {
+        return notApplicable(rule);
+      }
+      if (patient.hasGuarantor === true) {
+        return verification(
+          rule,
+          "Garante dichiarato: documentazione da verificare",
+          rule.verificationMessage ??
+            "Garante dichiarato: verificare reddito dimostrabile e ammissibilità formale.",
+        );
+      }
+      return verification(
+        rule,
+        "Garante richiesto per il profilo dichiarato",
+        rule.verificationMessage ?? rule.failureMessage,
+      );
     }
 
     case "minimum_amount": {

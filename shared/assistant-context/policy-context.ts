@@ -120,7 +120,11 @@ export function buildEntityCatalogFromActiveData(input: {
     catalog.push({
       kind: "company",
       id: company.id,
-      labels: [company.name, company.shortName].filter(Boolean),
+      labels: uniqueLabels([
+        company.name,
+        company.shortName,
+        ...deriveInitialsAliases(company.name, company.shortName),
+      ]),
     });
   }
   for (const product of input.products) {
@@ -128,9 +132,7 @@ export function buildEntityCatalogFromActiveData(input: {
       kind: "product",
       id: product.id,
       companyId: product.companyId,
-      labels: [product.name, product.code].filter(
-        (value): value is string => Boolean(value),
-      ),
+      labels: uniqueLabels([product.name, product.code]),
     });
   }
   for (const table of input.tables) {
@@ -140,8 +142,41 @@ export function buildEntityCatalogFromActiveData(input: {
       companyId: table.companyId,
       productId: table.productId,
       network: table.network,
-      labels: [table.tableCode, table.displayName].filter(Boolean),
+      labels: uniqueLabels([table.tableCode, table.displayName]),
     });
   }
   return catalog;
+}
+
+/** Alias tecnici da iniziali multi-parola (es. "Deutsche Bank" → "DB"). */
+function deriveInitialsAliases(...labels: string[]): string[] {
+  const aliases: string[] = [];
+  for (const label of labels) {
+    const parts = label
+      .trim()
+      .split(/\s+/)
+      .filter((part) => part.length > 0);
+    if (parts.length < 2) continue;
+    const initials = parts
+      .map((part) => part[0] ?? "")
+      .join("")
+      .toUpperCase();
+    if (initials.length >= 2) {
+      aliases.push(initials);
+    }
+  }
+  return aliases;
+}
+
+function uniqueLabels(values: Array<string | undefined | null>): string[] {
+  const result: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (!value || !value.trim()) continue;
+    const key = value.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(value.trim());
+  }
+  return result;
 }

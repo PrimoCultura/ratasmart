@@ -99,6 +99,8 @@ export function mapCalculationSummary(
     customerTanPercent: calculation.customerTanPercent,
     regularBaseInstallmentAmount: calculation.regularBaseInstallmentAmount,
     collectionFeePerInstallment: calculation.collectionFeePerInstallment,
+    installmentFeeType: calculation.installmentFeeType,
+    installmentFeeValue: calculation.installmentFeeValue,
     regularTotalInstallmentAmount: calculation.regularTotalInstallmentAmount,
     finalTotalInstallmentAmount: calculation.finalTotalInstallmentAmount,
     taegCalculationSucceeded: taegSucceeded,
@@ -107,6 +109,7 @@ export function mapCalculationSummary(
     totalCollectionFees: calculation.totalCollectionFees,
     totalCustomerRepayment: calculation.totalCustomerRepayment,
     totalCustomerCosts: calculation.totalCustomerCosts,
+    internalCostBase: calculation.internalCostBase,
     internalCostPercentApplied: calculation.internalCostPercentApplied,
     internalCostAmount: calculation.internalCostAmount,
     netAmountPaidToCompany: calculation.netAmountPaidToCompany,
@@ -133,15 +136,60 @@ export function mapCalculationInputSnapshot(
       // fallback: non disponibile sul runtime solution; il chiamante passa requestedAmount via table context
       0,
     durationMonths: solution.durationMonths,
-    customerTanPercent: table.customerTanPercent,
+    customerTanPercent:
+      solution.calculation?.customerTanPercent ??
+      solution.durationTermSnapshot?.customerTanPercent ??
+      table.customerTanPercent,
     openingFeeType: table.openingFeeType,
     openingFeeValue: table.openingFeeValue,
-    collectionFeePerInstallment: table.collectionFeePerInstallment,
+    collectionFeePerInstallment:
+      solution.calculation?.collectionFeePerInstallment ??
+      table.collectionFeePerInstallment,
     firstInstallmentDelayDays: solution.firstInstallmentDelayDays,
   };
 
+  const feeType = normalizeOptional(
+    solution.calculation?.installmentFeeType ?? table.installmentFeeType,
+  );
+  if (feeType !== undefined) {
+    input.installmentFeeType = feeType;
+  }
+  const feeValue = normalizeOptional(
+    solution.calculation?.installmentFeeValue ?? table.installmentFeeValue,
+  );
+  if (feeValue !== undefined) {
+    input.installmentFeeValue = feeValue;
+  }
+
+  const costBase = normalizeOptional(
+    solution.calculation?.internalCostBase ?? table.internalCostBase,
+  );
+  if (costBase !== undefined) {
+    input.internalCostBase = costBase;
+  }
+
+  const appliedFromTerm = normalizeOptional(
+    solution.durationTermSnapshot?.internalCostPercent,
+  );
+  const appliedFromCalc = normalizeOptional(
+    solution.calculation?.internalCostPercentApplied,
+  );
+  if (appliedFromTerm !== undefined) {
+    input.internalCostPercentApplied = appliedFromTerm;
+  } else if (
+    appliedFromCalc !== undefined &&
+    solution.durationTermSnapshot !== undefined
+  ) {
+    input.internalCostPercentApplied = appliedFromCalc;
+  } else if (
+    appliedFromCalc !== undefined &&
+    table.internalCostPercentAt24Months === undefined
+  ) {
+    input.internalCostPercentApplied = appliedFromCalc;
+  }
+
   const internal = normalizeOptional(table.internalCostPercentAt24Months);
-  if (internal !== undefined) {
+  if (internal !== undefined && input.internalCostPercentApplied === undefined) {
     input.internalCostPercentAt24Months = internal;
   }
 
@@ -279,13 +327,27 @@ export function mapRuntimeSolutionToPersistentSnapshot(
       minimumDurationMonths: table.minimumDurationMonths,
       maximumDurationMonths: table.maximumDurationMonths,
       durationStepMonths: table.durationStepMonths,
+      durationTerms: table.durationTerms
+        ? table.durationTerms.map((term) =>
+            stripUndefinedDeep({
+              durationMonths: term.durationMonths,
+              minimumAmount: term.minimumAmount,
+              maximumAmount: term.maximumAmount,
+              customerTanPercent: normalizeOptional(term.customerTanPercent),
+              internalCostPercent: normalizeOptional(term.internalCostPercent),
+            }),
+          )
+        : undefined,
       customerTanPercent: table.customerTanPercent,
       openingFeeType: table.openingFeeType,
       openingFeeValue: table.openingFeeValue,
       collectionFeePerInstallment: table.collectionFeePerInstallment,
+      installmentFeeType: normalizeOptional(table.installmentFeeType),
+      installmentFeeValue: normalizeOptional(table.installmentFeeValue),
       internalCostPercentAt24Months: normalizeOptional(
         table.internalCostPercentAt24Months,
       ),
+      internalCostBase: normalizeOptional(table.internalCostBase),
       supportedFirstInstallmentDelayDays: [
         ...table.firstInstallmentDelayDays,
       ],
@@ -308,6 +370,18 @@ export function mapRuntimeSolutionToPersistentSnapshot(
     requiresManagerAuthorizationNotice:
       solution.requiresManagerAuthorizationNotice,
   };
+
+  if (solution.durationTermSnapshot) {
+    fields.durationTermSnapshot = stripUndefinedDeep({
+      durationMonths: solution.durationTermSnapshot.durationMonths,
+      minimumAmount: solution.durationTermSnapshot.minimumAmount,
+      maximumAmount: solution.durationTermSnapshot.maximumAmount,
+      customerTanPercent: solution.durationTermSnapshot.customerTanPercent,
+      internalCostPercent: normalizeOptional(
+        solution.durationTermSnapshot.internalCostPercent,
+      ),
+    });
+  }
 
   if (calculationSummary) {
     fields.calculationSummary = calculationSummary;

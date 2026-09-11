@@ -21,6 +21,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { NETWORKS, type Network } from "@/lib/constants/app";
 
@@ -32,6 +43,11 @@ export function PoliciesPage() {
   const tables = useQuery(api.financialTables.listFinancialTablesAdmin);
   const createPolicy = useMutation(api.policies.createPolicySet);
   const setActive = useMutation(api.policies.setPolicySetActive);
+  const seedPolicies = useMutation(api.seed.seedPcgFinancingPolicies2026);
+  const activatePrompt = useMutation(
+    api.seed.activateVirtualMarcoPreScreeningPrompt,
+  );
+  const [seeding, setSeeding] = useState(false);
 
   const [form, setForm] = useState({
     companyId: "",
@@ -73,7 +89,69 @@ export function PoliciesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Policy"
-        description="Policy formali di compatibilità. Il motore di valutazione arriverà nella fase successiva."
+        description="Policy formali di compatibilità paziente (PCG/DES). Le condizioni economiche restano nelle tabelle finanziarie."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <SeedPoliciesButton
+              disabled={!userId || seeding}
+              onConfirm={() => {
+                if (!userId) return;
+                setSeeding(true);
+                void seedPolicies({ actorUserId: userId })
+                  .then((summary) => {
+                    toast.success(
+                      `Policy: +${summary.policies.created.length} create, ${summary.policies.versioned.length} versionate, ${summary.policies.skipped.length} skip`,
+                    );
+                    for (const warning of summary.policies.warnings) {
+                      toast.message(warning);
+                    }
+                    if (summary.policies.deactivatedDemo.length > 0) {
+                      toast.message(
+                        `Demo disattivate: ${summary.policies.deactivatedDemo.length}`,
+                      );
+                    }
+                  })
+                  .catch((error: unknown) => {
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Seed policy non riuscito",
+                    );
+                  })
+                  .finally(() => setSeeding(false));
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!userId || seeding}
+              onClick={() => {
+                if (!userId) return;
+                setSeeding(true);
+                void activatePrompt({ actorUserId: userId })
+                  .then((result) => {
+                    if (result.status === "already_active") {
+                      toast.success("Prompt PRE-SCREENING già attivo");
+                    } else if (result.status === "needs_manual_review") {
+                      toast.message(result.warning ?? "Verifica prompt custom");
+                    } else {
+                      toast.success(`Prompt Virtual Marco: ${result.status}`);
+                    }
+                  })
+                  .catch((error: unknown) => {
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Attivazione prompt non riuscita",
+                    );
+                  })
+                  .finally(() => setSeeding(false));
+              }}
+            >
+              Attiva prompt PRE-SCREENING
+            </Button>
+          </div>
+        }
       />
 
       <Card>
@@ -319,5 +397,37 @@ export function PoliciesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function SeedPoliciesButton({
+  disabled,
+  onConfirm,
+}: {
+  disabled?: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button type="button" disabled={disabled}>
+          Carica policy finanziamenti PCG 2026
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Caricare policy PCG 2026?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Verranno create/versionate le policy formali Agos, Compass e Deutsche
+            Bank per la rete PCG, e aggiornate le knowledge card operative
+            correlate. Le tabelle finanziarie non vengono modificate.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Annulla</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm}>Conferma</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

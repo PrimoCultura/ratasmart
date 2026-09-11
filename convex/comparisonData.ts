@@ -123,7 +123,11 @@ export const getComparisonBundle = internalQuery({
         openingFeeType: table.openingFeeType,
         openingFeeValue: table.openingFeeValue,
         collectionFeePerInstallment: table.collectionFeePerInstallment,
+        installmentFeeType: table.installmentFeeType,
+        installmentFeeValue: table.installmentFeeValue,
         internalCostPercentAt24Months: table.internalCostPercentAt24Months,
+        internalCostBase: table.internalCostBase,
+        durationTerms: table.durationTerms,
         firstInstallmentDelayDays: table.firstInstallmentDelayDays,
         requiresManagerAuthorizationNotice:
           table.requiresManagerAuthorizationNotice,

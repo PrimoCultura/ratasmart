@@ -5,6 +5,7 @@ import { formatCurrency } from "@/lib/formatting/currency";
 import {
   formatDelayDays,
   formatDurationRange,
+  formatInstallmentFee,
   formatOpeningFee,
   formatPercent,
 } from "@/lib/formatting/financial";
@@ -79,6 +80,7 @@ export function FinancialTableCard({
               table.minimumDurationMonths,
               table.maximumDurationMonths,
               table.durationStepMonths,
+              table.durationTerms,
             )}
           />
           <Info label="TAN paziente" value={formatPercent(table.customerTanPercent)} />
@@ -87,8 +89,12 @@ export function FinancialTableCard({
             value={formatOpeningFee(table.openingFeeType, table.openingFeeValue)}
           />
           <Info
-            label="Spesa incasso rata"
-            value={formatCurrency(table.collectionFeePerInstallment)}
+            label="Spesa/commissione per rata"
+            value={formatInstallmentFee(
+              table.installmentFeeType,
+              table.installmentFeeValue,
+              table.collectionFeePerInstallment,
+            )}
           />
           <Info
             label="Prima rata"

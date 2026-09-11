@@ -25,12 +25,38 @@ export const OPENING_FEE_TYPE_LABELS: Record<OpeningFeeType, string> = {
   percentage: "Percentuale (%)",
 };
 
+export const INSTALLMENT_FEE_TYPES = [
+  "none",
+  "fixed",
+  "percentage_of_requested_amount",
+] as const;
+export type InstallmentFeeType = (typeof INSTALLMENT_FEE_TYPES)[number];
+
+export const INSTALLMENT_FEE_TYPE_LABELS: Record<InstallmentFeeType, string> = {
+  none: "Nessuna",
+  fixed: "€ fisso/rata",
+  percentage_of_requested_amount: "% importo richiesto/rata",
+};
+
+export const INTERNAL_COST_BASES = [
+  "financed_amount",
+  "requested_amount",
+] as const;
+export type InternalCostBase = (typeof INTERNAL_COST_BASES)[number];
+
+export const INTERNAL_COST_BASE_LABELS: Record<InternalCostBase, string> = {
+  financed_amount: "Su importo finanziato (legacy)",
+  requested_amount: "Su importo richiesto",
+};
+
 export const EMPLOYMENT_TYPES = [
   "permanent_employee",
   "temporary_employee",
   "pensioner",
   "self_employed",
   "unemployed",
+  "student",
+  "housewife",
   "other",
 ] as const;
 
@@ -42,6 +68,8 @@ export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   pensioner: "Pensionato",
   self_employed: "Autonomo / Partita IVA",
   unemployed: "Disoccupato",
+  student: "Studente",
+  housewife: "Casalinga",
   other: "Altro",
 };
 
@@ -54,6 +82,10 @@ export const POLICY_RULE_TYPES = [
   "pensioner_allowed",
   "non_eu_allowed",
   "residence_permit_expiry",
+  "renewal_receipt_allowed",
+  "minimum_employment_seniority_months",
+  "maximum_amount_for_employment_types",
+  "guarantor_required_for_employment_types",
   "minimum_amount",
   "maximum_amount",
   "minimum_duration",
@@ -72,6 +104,10 @@ export const POLICY_RULE_TYPE_LABELS: Record<PolicyRuleType, string> = {
   pensioner_allowed: "Pensionato ammesso",
   non_eu_allowed: "Extracomunitario ammesso",
   residence_permit_expiry: "Scadenza permesso di soggiorno",
+  renewal_receipt_allowed: "Ricevuta di rinnovo permesso ammessa",
+  minimum_employment_seniority_months: "Anzianità lavorativa minima (mesi)",
+  maximum_amount_for_employment_types: "Importo massimo per tipologie di lavoro",
+  guarantor_required_for_employment_types: "Garante richiesto per tipologie di lavoro",
   minimum_amount: "Importo minimo",
   maximum_amount: "Importo massimo",
   minimum_duration: "Durata minima",
@@ -135,28 +171,8 @@ export function defaultRequiresManagerAuthorization(
   return category === "zero_interest" || category === "subsidized";
 }
 
-/**
- * Genera le durate disponibili da minimo, massimo e step.
- * Esempio: 12–84 step 6 → 12, 18, 24…84
- */
-export function generateDurationMonths(
-  minimum: number,
-  maximum: number,
-  step: number,
-): number[] {
-  if (
-    !Number.isFinite(minimum) ||
-    !Number.isFinite(maximum) ||
-    !Number.isFinite(step) ||
-    minimum <= 0 ||
-    maximum < minimum ||
-    step <= 0
-  ) {
-    return [];
-  }
-  const durations: number[] = [];
-  for (let current = minimum; current <= maximum; current += step) {
-    durations.push(current);
-  }
-  return durations;
-}
+export {
+  generateDurationMonths,
+  resolveTableDurationMonths,
+  type DurationTermLike,
+} from "../../../shared/table-durations";

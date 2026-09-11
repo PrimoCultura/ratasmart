@@ -7,6 +7,35 @@ import {
   type RuntimeKnowledgeCard,
 } from "./types.ts";
 
+/** Espansione leggera forme verbali/procedurali senza NLP. */
+const TOKEN_ALIASES: Record<string, string[]> = {
+  liquido: ["liquidazione", "liquidare", "liquido"],
+  liquidare: ["liquidazione", "liquidare", "liquido"],
+  liquidazione: ["liquidazione", "liquidare", "liquido"],
+  erogare: ["erogazione", "erogare"],
+  erogazione: ["erogazione", "erogare"],
+  erogata: ["erogazione", "erogare"],
+};
+
+export function expandQuestionTokens(tokens: string[]): string[] {
+  const expanded = new Set(tokens);
+  for (const token of tokens) {
+    for (const alias of TOKEN_ALIASES[token] ?? []) {
+      expanded.add(alias);
+    }
+    if (token.startsWith("liquid")) {
+      expanded.add("liquidazione");
+      expanded.add("liquidare");
+      expanded.add("liquido");
+    }
+    if (token.startsWith("erog")) {
+      expanded.add("erogazione");
+      expanded.add("erogare");
+    }
+  }
+  return [...expanded];
+}
+
 export type ScoredKnowledgeCard = {
   card: RuntimeKnowledgeCard;
   score: number;
@@ -59,16 +88,55 @@ export function isScopeCompatible(
   card: RuntimeKnowledgeCard,
   context: KnowledgeSelectionContext,
 ): boolean {
+  const companyIds = resolveScopeIds(context.companyIds, context.companyId);
+  const productIds = resolveScopeIds(context.productIds, context.productId);
+  const tableIds = resolveScopeIds(
+    context.financialTableIds,
+    context.financialTableId,
+  );
+
   if (card.financialTableId) {
-    return card.financialTableId === context.financialTableId;
+    if (tableIds.length === 0) return false;
+    return tableIds.includes(card.financialTableId);
   }
   if (card.productId) {
-    return card.productId === context.productId;
+    if (productIds.length === 0) return false;
+    return productIds.includes(card.productId);
   }
   if (card.companyId) {
-    return card.companyId === context.companyId;
+    if (companyIds.length === 0) return false;
+    return companyIds.includes(card.companyId);
   }
   return true;
+}
+
+function resolveScopeIds(
+  many: string[] | undefined,
+  single: string | undefined,
+): string[] {
+  if (many && many.length > 0) {
+    return [...new Set(many)];
+  }
+  if (single) {
+    return [single];
+  }
+  return [];
+}
+
+/**
+ * Esclude schede superseded da una versione attiva presente nel set candidato.
+ * Preferire sempre isActive=false sulle superseded; questa è una rete di sicurezza.
+ */
+export function filterCurrentKnowledgeVersions(
+  cards: RuntimeKnowledgeCard[],
+): RuntimeKnowledgeCard[] {
+  const active = cards.filter((card) => card.isActive !== false);
+  const supersededByActive = new Set(
+    active
+      .map((card) => card.supersedesCardId)
+      .filter((id): id is string => Boolean(id)),
+  );
+  return active.filter((card) => !supersededByActive.has(card.id));
 }
 
 export function scoreKnowledgeCard(
@@ -152,7 +220,9 @@ export function scoreKnowledgeCard(
     reasons.push("Scheda generale");
   }
 
-  const questionTokens = tokenizeQuestion(context.userQuestion);
+  const questionTokens = expandQuestionTokens(
+    tokenizeQuestion(context.userQuestion),
+  );
   const normalizedTitle = normalizeText(card.title);
   const titleTokens = new Set(normalizedTitle.split(" ").filter(Boolean));
 

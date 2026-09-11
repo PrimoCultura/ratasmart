@@ -24,5 +24,7 @@ export const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
   pensioner: "Pensionato",
   self_employed: "Autonomo",
   unemployed: "Disoccupato",
+  student: "Studente",
+  housewife: "Casalinga",
   other: "Altro",
 };

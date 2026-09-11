@@ -28,6 +28,8 @@ export {
   isNetworkCompatible,
   isScopeCompatible,
   isVisibilityCompatible,
+  filterCurrentKnowledgeVersions,
+  expandQuestionTokens,
   resolveCardVisibility,
   scoreKnowledgeCard,
 } from "./scoring.ts";
@@ -38,3 +40,9 @@ export {
   formatKnowledgeContext,
   selectRelevantKnowledgeCards,
 } from "./selection.ts";
+
+export {
+  PCG_KNOWLEDGE_CARDS_2026,
+  PCG_KB_SOURCE_REFERENCE,
+} from "./officialPcgCards2026.ts";
+export type { OfficialKnowledgeCardSeed } from "./officialPcgCards2026.ts";

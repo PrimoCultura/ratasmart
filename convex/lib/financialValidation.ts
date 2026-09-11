@@ -16,6 +16,17 @@ export const openingFeeTypeValidator = v.union(
   v.literal("percentage"),
 );
 
+export const installmentFeeTypeValidator = v.union(
+  v.literal("none"),
+  v.literal("fixed"),
+  v.literal("percentage_of_requested_amount"),
+);
+
+export const internalCostBaseValidator = v.union(
+  v.literal("requested_amount"),
+  v.literal("financed_amount"),
+);
+
 export const policyRuleTypeValidator = v.union(
   v.literal("minimum_age"),
   v.literal("maximum_age_at_application"),
@@ -25,6 +36,10 @@ export const policyRuleTypeValidator = v.union(
   v.literal("pensioner_allowed"),
   v.literal("non_eu_allowed"),
   v.literal("residence_permit_expiry"),
+  v.literal("renewal_receipt_allowed"),
+  v.literal("minimum_employment_seniority_months"),
+  v.literal("maximum_amount_for_employment_types"),
+  v.literal("guarantor_required_for_employment_types"),
   v.literal("minimum_amount"),
   v.literal("maximum_amount"),
   v.literal("minimum_duration"),
@@ -71,6 +86,14 @@ export function defaultRequiresManagerAuthorization(
   return category === "zero_interest" || category === "subsidized";
 }
 
+export type DurationTermInput = {
+  durationMonths: number;
+  minimumAmount: number;
+  maximumAmount: number;
+  customerTanPercent?: number;
+  internalCostPercent?: number;
+};
+
 export type FinancialTableInput = {
   minimumAmount: number;
   maximumAmount: number;
@@ -81,9 +104,64 @@ export type FinancialTableInput = {
   openingFeeType: "none" | "fixed" | "percentage";
   openingFeeValue: number;
   collectionFeePerInstallment: number;
+  installmentFeeType?: "none" | "fixed" | "percentage_of_requested_amount";
+  installmentFeeValue?: number;
   internalCostPercentAt24Months?: number;
+  internalCostBase?: "requested_amount" | "financed_amount";
   firstInstallmentDelayDays: number[];
+  durationTerms?: DurationTermInput[];
 };
+
+export function validateDurationTerms(
+  terms: DurationTermInput[] | undefined,
+): void {
+  if (terms === undefined || terms.length === 0) {
+    return;
+  }
+
+  const seen = new Set<number>();
+  for (const term of terms) {
+    if (
+      !Number.isFinite(term.durationMonths) ||
+      !Number.isInteger(term.durationMonths) ||
+      term.durationMonths <= 0
+    ) {
+      throw new Error("Ogni durata deve essere un intero maggiore di zero.");
+    }
+    if (seen.has(term.durationMonths)) {
+      throw new Error(
+        `Durata duplicata nei termini: ${term.durationMonths} mesi.`,
+      );
+    }
+    seen.add(term.durationMonths);
+    if (!(term.minimumAmount > 0)) {
+      throw new Error(
+        `Importo minimo non valido per ${term.durationMonths} mesi.`,
+      );
+    }
+    if (term.maximumAmount < term.minimumAmount) {
+      throw new Error(
+        `Importo massimo inferiore al minimo per ${term.durationMonths} mesi.`,
+      );
+    }
+    if (
+      term.customerTanPercent !== undefined &&
+      term.customerTanPercent < 0
+    ) {
+      throw new Error(
+        `TAN non valido per ${term.durationMonths} mesi.`,
+      );
+    }
+    if (
+      term.internalCostPercent !== undefined &&
+      term.internalCostPercent < 0
+    ) {
+      throw new Error(
+        `Costo aziendale non valido per ${term.durationMonths} mesi.`,
+      );
+    }
+  }
+}
 
 export function validateFinancialTableEconomics(input: FinancialTableInput): void {
   if (input.minimumAmount <= 0) {
@@ -114,10 +192,33 @@ export function validateFinancialTableEconomics(input: FinancialTableInput): voi
     throw new Error("La spesa di incasso rata non può essere negativa.");
   }
   if (
+    input.installmentFeeValue !== undefined &&
+    input.installmentFeeValue < 0
+  ) {
+    throw new Error(
+      "Il valore della spesa/commissione per rata non può essere negativo.",
+    );
+  }
+  if (
+    input.installmentFeeType === "none" &&
+    (input.installmentFeeValue ?? 0) !== 0
+  ) {
+    throw new Error(
+      "Con spesa/commissione per rata assente il valore deve essere zero.",
+    );
+  }
+  if (
     input.internalCostPercentAt24Months !== undefined &&
     input.internalCostPercentAt24Months < 0
   ) {
     throw new Error("Il costo interno a 24 mesi non può essere negativo.");
+  }
+  if (
+    input.internalCostBase !== undefined &&
+    input.internalCostBase !== "requested_amount" &&
+    input.internalCostBase !== "financed_amount"
+  ) {
+    throw new Error("Base costo aziendale non valida.");
   }
   if (input.firstInstallmentDelayDays.length === 0) {
     throw new Error("Indica almeno un ritardo per la prima rata.");
@@ -125,6 +226,7 @@ export function validateFinancialTableEconomics(input: FinancialTableInput): voi
   if (input.firstInstallmentDelayDays.some((day) => day <= 0)) {
     throw new Error("I giorni di ritardo della prima rata devono essere positivi.");
   }
+  validateDurationTerms(input.durationTerms);
 }
 
 export function generateDurationMonths(

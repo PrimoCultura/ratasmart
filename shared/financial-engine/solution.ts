@@ -1,6 +1,7 @@
 import { buildFrenchAmortizationSchedule } from "./amortization.ts";
 import { FinancialEngineError } from "./errors.ts";
 import { calculateInternalCost } from "./internal-cost.ts";
+import { resolveInstallmentFee } from "./installment-fee.ts";
 import { Decimal, roundMoney, toDecimal } from "./money.ts";
 import {
   calculateFinancedAmount,
@@ -46,12 +47,35 @@ function validateInput(input: FinancialCalculationInput): void {
   }
 
   if (
-    !Number.isFinite(input.collectionFeePerInstallment) ||
-    input.collectionFeePerInstallment < 0
+    input.collectionFeePerInstallment !== undefined &&
+    (!Number.isFinite(input.collectionFeePerInstallment) ||
+      input.collectionFeePerInstallment < 0)
   ) {
     throw new FinancialEngineError(
       "INVALID_COLLECTION_FEE",
       "La spesa di incasso rata non può essere negativa.",
+    );
+  }
+
+  if (
+    input.installmentFeeValue !== undefined &&
+    (!Number.isFinite(input.installmentFeeValue) ||
+      input.installmentFeeValue < 0)
+  ) {
+    throw new FinancialEngineError(
+      "INVALID_COLLECTION_FEE",
+      "Il valore della spesa/commissione per rata non può essere negativo.",
+    );
+  }
+
+  if (
+    input.internalCostPercentApplied !== undefined &&
+    (!Number.isFinite(input.internalCostPercentApplied) ||
+      input.internalCostPercentApplied < 0)
+  ) {
+    throw new FinancialEngineError(
+      "INVALID_INTERNAL_COST",
+      "Il costo interno applicato non può essere negativo.",
     );
   }
 
@@ -87,11 +111,18 @@ export function calculateFinancialSolution(
     openingFeeAmount,
   );
 
+  const installmentFee = resolveInstallmentFee({
+    requestedAmount: input.requestedAmount,
+    installmentFeeType: input.installmentFeeType,
+    installmentFeeValue: input.installmentFeeValue,
+    collectionFeePerInstallment: input.collectionFeePerInstallment,
+  });
+
   const amortization = buildFrenchAmortizationSchedule({
     financedAmount,
     customerTanPercent: input.customerTanPercent,
     durationMonths: input.durationMonths,
-    collectionFeePerInstallment: input.collectionFeePerInstallment,
+    collectionFeePerInstallment: installmentFee.feePerInstallment,
     firstInstallmentDelayDays: input.firstInstallmentDelayDays,
   });
 
@@ -126,8 +157,11 @@ export function calculateFinancialSolution(
   );
 
   const internal = calculateInternalCost({
+    requestedAmount: input.requestedAmount,
     financedAmount,
     durationMonths: input.durationMonths,
+    internalCostBase: input.internalCostBase,
+    internalCostPercentApplied: input.internalCostPercentApplied,
     internalCostPercentAt24Months: input.internalCostPercentAt24Months,
   });
 
@@ -138,7 +172,7 @@ export function calculateFinancialSolution(
 
   const regularTotalInstallmentAmount = roundMoney(
     toDecimal(amortization.regularBaseInstallmentAmount).plus(
-      input.collectionFeePerInstallment,
+      installmentFee.feePerInstallment,
     ),
   );
   const finalRow = schedule[schedule.length - 1];
@@ -154,7 +188,9 @@ export function calculateFinancialSolution(
     monthlyNominalRate: amortization.monthlyRate,
     theoreticalBaseInstallmentAmount: amortization.theoreticalBaseInstallmentAmount,
     regularBaseInstallmentAmount: amortization.regularBaseInstallmentAmount,
-    collectionFeePerInstallment: roundMoney(input.collectionFeePerInstallment),
+    installmentFeeType: installmentFee.installmentFeeType,
+    installmentFeeValue: installmentFee.installmentFeeValue,
+    collectionFeePerInstallment: installmentFee.feePerInstallment,
     regularTotalInstallmentAmount,
     finalTotalInstallmentAmount,
     totalPrincipalRepaid,
@@ -162,6 +198,7 @@ export function calculateFinancialSolution(
     totalCollectionFees,
     totalCustomerRepayment,
     totalCustomerCosts,
+    internalCostBase: internal.internalCostBase,
     internalCostPercentAt24Months: internal.internalCostPercentAt24Months,
     internalCostPercentApplied: internal.internalCostPercentApplied,
     internalCostAmount: internal.internalCostAmount,

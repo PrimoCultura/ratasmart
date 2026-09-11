@@ -46,12 +46,16 @@ export function TablesPage() {
   const tables = useQuery(api.financialTables.listFinancialTablesAdmin);
   const companies = useQuery(api.financialCompanies.listFinancialCompanies);
   const setActive = useMutation(api.financialTables.setFinancialTableActive);
+  const seedAgosPcg = useMutation(api.seed.seedAgosPcg2026);
+  const seedDeutscheBankPcg = useMutation(api.seed.seedDeutscheBankPcg2026);
+  const seedCompassPcg = useMutation(api.seed.seedCompassPcg2026);
 
   const [search, setSearch] = useState("");
   const [network, setNetwork] = useState<NetworkFilter>("ALL");
   const [companyId, setCompanyId] = useState<string>("ALL");
   const [category, setCategory] = useState<"ALL" | ProductCategory>("ALL");
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("ALL");
+  const [seeding, setSeeding] = useState(false);
 
   const filtered = useMemo(() => {
     if (!tables) return [];
@@ -80,9 +84,92 @@ export function TablesPage() {
         title="Tabelle finanziarie"
         description="Condizioni economiche versionabili per rete PCG/DES. Le modifiche rilevanti creano una nuova versione."
         actions={
-          <Button asChild>
-            <Link to="/admin/tabelle/nuova">Nuova tabella</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <SeedButton
+              label="Carica configurazione Agos PCG 2026"
+              title="Caricare Agos PCG 2026?"
+              description="Verranno create le tabelle Agos PCG configurate per RataSmart. Le versioni storiche già utilizzate non verranno eliminate."
+              disabled={!userId || seeding}
+              onConfirm={() => {
+                if (!userId) return;
+                setSeeding(true);
+                void seedAgosPcg({ actorUserId: userId })
+                  .then((summary) => {
+                    toast.success(
+                      `Agos PCG: +${summary.created.length} create, ${summary.updatedOrVersioned.length} versionate, ${summary.skipped.length} skip, ${summary.deactivated.length} disattivate`,
+                    );
+                    if (summary.warnings.length > 0) {
+                      toast.message(summary.warnings.join(" · "));
+                    }
+                  })
+                  .catch((error: unknown) =>
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Seed non riuscito",
+                    ),
+                  )
+                  .finally(() => setSeeding(false));
+              }}
+            />
+            <SeedButton
+              label="Carica configurazione Deutsche Bank PCG 2026"
+              title="Caricare Deutsche Bank PCG 2026?"
+              description="Verranno create le tabelle Deutsche Bank PCG (SJ=, MUE, S/U, S8L). Le versioni storiche già utilizzate non verranno eliminate."
+              disabled={!userId || seeding}
+              onConfirm={() => {
+                if (!userId) return;
+                setSeeding(true);
+                void seedDeutscheBankPcg({ actorUserId: userId })
+                  .then((summary) => {
+                    toast.success(
+                      `DB PCG: +${summary.created.length} create, ${summary.updatedOrVersioned.length} versionate, ${summary.skipped.length} skip`,
+                    );
+                    if (summary.warnings.length > 0) {
+                      toast.message(summary.warnings.join(" · "));
+                    }
+                  })
+                  .catch((error: unknown) =>
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Seed non riuscito",
+                    ),
+                  )
+                  .finally(() => setSeeding(false));
+              }}
+            />
+            <SeedButton
+              label="Carica configurazione Compass PCG 2026"
+              title="Caricare Compass PCG 2026?"
+              description="Verranno create le tabelle Compass PCG (81K, NE9). Le versioni storiche già utilizzate non verranno eliminate."
+              disabled={!userId || seeding}
+              onConfirm={() => {
+                if (!userId) return;
+                setSeeding(true);
+                void seedCompassPcg({ actorUserId: userId })
+                  .then((summary) => {
+                    toast.success(
+                      `Compass PCG: +${summary.created.length} create, ${summary.updatedOrVersioned.length} versionate, ${summary.skipped.length} skip`,
+                    );
+                    if (summary.warnings.length > 0) {
+                      toast.message(summary.warnings.join(" · "));
+                    }
+                  })
+                  .catch((error: unknown) =>
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Seed non riuscito",
+                    ),
+                  )
+                  .finally(() => setSeeding(false));
+              }}
+            />
+            <Button asChild>
+              <Link to="/admin/tabelle/nuova">Nuova tabella</Link>
+            </Button>
+          </div>
         }
       />
 
@@ -236,5 +323,41 @@ export function TablesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function SeedButton({
+  label,
+  title,
+  description,
+  disabled,
+  onConfirm,
+}: {
+  label: string;
+  title: string;
+  description: string;
+  disabled: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline" disabled={disabled}>
+          {label}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Annulla</AlertDialogCancel>
+          <AlertDialogAction disabled={disabled} onClick={onConfirm}>
+            Conferma
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

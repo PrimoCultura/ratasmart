@@ -3,6 +3,7 @@ import {
   FinancialEngineError,
   convertDelayDaysToMonths,
   generateAllowedDurations,
+  resolveAllowedDurations,
 } from "../index.ts";
 
 describe("generateAllowedDurations", () => {
@@ -74,6 +75,36 @@ describe("generateAllowedDurations", () => {
         durationStepMonths: 6,
       }),
     ).toThrow(FinancialEngineError);
+  });
+});
+
+describe("resolveAllowedDurations with durationTerms", () => {
+  it("usa esattamente le durate dei termini, senza step artificiale", () => {
+    expect(
+      resolveAllowedDurations({
+        minimumDurationMonths: 6,
+        maximumDurationMonths: 20,
+        durationStepMonths: 1,
+        durationTerms: [
+          { durationMonths: 6, minimumAmount: 200, maximumAmount: 1500 },
+          { durationMonths: 9, minimumAmount: 200, maximumAmount: 1500 },
+          { durationMonths: 12, minimumAmount: 200, maximumAmount: 1500 },
+          { durationMonths: 15, minimumAmount: 226, maximumAmount: 1500 },
+          { durationMonths: 18, minimumAmount: 268, maximumAmount: 1500 },
+          { durationMonths: 20, minimumAmount: 295, maximumAmount: 1500 },
+        ],
+      }),
+    ).toEqual([6, 9, 12, 15, 18, 20]);
+  });
+
+  it("fallback a min/max/step se durationTerms assente", () => {
+    expect(
+      resolveAllowedDurations({
+        minimumDurationMonths: 12,
+        maximumDurationMonths: 36,
+        durationStepMonths: 12,
+      }),
+    ).toEqual([12, 24, 36]);
   });
 });
 

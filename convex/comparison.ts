@@ -10,6 +10,10 @@ import type {
 } from "../shared/policy-engine/types";
 import { FINANCIAL_ENGINE_VERSION } from "../shared/financial-engine/index";
 import {
+  ALTERNATIVE_DIAGNOSTICS_VERSION,
+  buildComparisonDiagnostics,
+} from "../shared/alternative-diagnostics/index";
+import {
   regenerateAmortizationFromInputSnapshot,
   stripUndefinedDeep,
 } from "./lib/comparisonSnapshotMapper";
@@ -32,6 +36,7 @@ export type CalculateSimulationComparisonResult = SimulationComparisonResult & {
   source: "initial_calculation" | "manual_recalculation";
   isHistorical: false;
   wasDuplicateRequest: boolean;
+  diagnostics?: ReturnType<typeof buildComparisonDiagnostics>;
 };
 
 /**
@@ -87,6 +92,10 @@ export const calculateSimulationComparison = action({
         temporaryContractExpiry: simulation.temporaryContractExpiry,
         isNonEuCitizen: simulation.isNonEuCitizen,
         residencePermitExpiry: simulation.residencePermitExpiry,
+        hasResidencePermitRenewalReceiptOnly:
+          simulation.hasResidencePermitRenewalReceiptOnly,
+        employmentSeniorityMonths: simulation.employmentSeniorityMonths,
+        hasGuarantor: simulation.hasGuarantor,
       };
 
       const calculationDate = bundle.now;
@@ -138,6 +147,25 @@ export const calculateSimulationComparison = action({
         };
       }
 
+      const companyNameById: Record<string, string> = {};
+      for (const company of bundle.companies) {
+        companyNameById[company.id] = company.shortName ?? company.name;
+      }
+
+      const diagnostics = buildComparisonDiagnostics({
+        calculationDate,
+        requestedAmount: simulation.requestedAmount,
+        selectedDurationMonths: result.selectedDurationMonths,
+        firstInstallmentDelayDays: result.selectedFirstInstallmentDelayDays,
+        patient,
+        compatibleSolutions: result.compatibleSolutions,
+        verificationRequiredSolutions: result.verificationRequiredSolutions,
+        incompatibleSolutions: result.incompatibleSolutions,
+        tables: bundle.tables,
+        companyNameById,
+        rulesByTableId: bundle.rulesByTableId,
+      });
+
       const persisted = await ctx.runMutation(
         internal.comparisonPersistence.persistComparisonRun,
         {
@@ -155,6 +183,10 @@ export const calculateSimulationComparison = action({
             temporaryContractExpiry: simulation.temporaryContractExpiry,
             isNonEuCitizen: simulation.isNonEuCitizen,
             residencePermitExpiry: simulation.residencePermitExpiry,
+            hasResidencePermitRenewalReceiptOnly:
+              simulation.hasResidencePermitRenewalReceiptOnly,
+            employmentSeniorityMonths: simulation.employmentSeniorityMonths,
+            hasGuarantor: simulation.hasGuarantor,
           }),
           result,
           messagesById,
@@ -218,6 +250,8 @@ export const calculateSimulationComparison = action({
                 category: product.category,
               }),
           ),
+          diagnosticsSnapshot: diagnostics,
+          alternativeDiagnosticsVersion: ALTERNATIVE_DIAGNOSTICS_VERSION,
         },
       );
 
@@ -237,6 +271,7 @@ export const calculateSimulationComparison = action({
         source: args.source,
         isHistorical: false,
         wasDuplicateRequest: persisted.wasDuplicate,
+        diagnostics,
       };
     } catch (error) {
       const message =

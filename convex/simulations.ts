@@ -15,6 +15,8 @@ const employmentTypeValidator = v.union(
   v.literal("pensioner"),
   v.literal("self_employed"),
   v.literal("unemployed"),
+  v.literal("student"),
+  v.literal("housewife"),
   v.literal("other"),
 );
 
@@ -38,6 +40,8 @@ function validatePatientFields(args: {
     | "pensioner"
     | "self_employed"
     | "unemployed"
+    | "student"
+    | "housewife"
     | "other";
   temporaryContractExpiry?: number;
   isNonEuCitizen: boolean;
@@ -180,6 +184,9 @@ export const createDraftSimulation = mutation({
     temporaryContractExpiry: v.optional(v.number()),
     isNonEuCitizen: v.optional(v.boolean()),
     residencePermitExpiry: v.optional(v.number()),
+    hasResidencePermitRenewalReceiptOnly: v.optional(v.boolean()),
+    employmentSeniorityMonths: v.optional(v.number()),
+    hasGuarantor: v.optional(v.boolean()),
     requestedDurationMonths: v.optional(v.number()),
     preferredFirstInstallmentDelayDays: v.optional(delayDaysValidator),
   },
@@ -222,6 +229,10 @@ export const createDraftSimulation = mutation({
       temporaryContractExpiry: args.temporaryContractExpiry,
       isNonEuCitizen: args.isNonEuCitizen,
       residencePermitExpiry: args.residencePermitExpiry,
+      hasResidencePermitRenewalReceiptOnly:
+        args.hasResidencePermitRenewalReceiptOnly,
+      employmentSeniorityMonths: args.employmentSeniorityMonths,
+      hasGuarantor: args.hasGuarantor,
       requestedDurationMonths: args.requestedDurationMonths,
       preferredFirstInstallmentDelayDays:
         args.preferredFirstInstallmentDelayDays,
@@ -246,6 +257,9 @@ export const updateSimulationPatientData = mutation({
     temporaryContractExpiry: v.optional(v.number()),
     isNonEuCitizen: v.boolean(),
     residencePermitExpiry: v.optional(v.number()),
+    hasResidencePermitRenewalReceiptOnly: v.optional(v.boolean()),
+    employmentSeniorityMonths: v.optional(v.number()),
+    hasGuarantor: v.optional(v.boolean()),
     requestedDurationMonths: v.optional(v.number()),
     preferredFirstInstallmentDelayDays: v.optional(delayDaysValidator),
   },
@@ -274,6 +288,14 @@ export const updateSimulationPatientData = mutation({
       residencePermitExpiry: args.isNonEuCitizen
         ? args.residencePermitExpiry
         : undefined,
+      hasResidencePermitRenewalReceiptOnly: args.isNonEuCitizen
+        ? args.hasResidencePermitRenewalReceiptOnly
+        : undefined,
+      employmentSeniorityMonths:
+        args.employmentType === "permanent_employee"
+          ? args.employmentSeniorityMonths
+          : undefined,
+      hasGuarantor: args.hasGuarantor,
       requestedDurationMonths: args.requestedDurationMonths,
       preferredFirstInstallmentDelayDays:
         args.preferredFirstInstallmentDelayDays,

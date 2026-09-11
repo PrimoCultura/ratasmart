@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { MessageSquarePlus, Send, Shield, ShieldAlert } from "lucide-react";
+import { MessageSquarePlus, Send } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -59,14 +59,10 @@ export function ChatPage() {
   const createConversation = useMutation(
     api.assistantConversations.createAssistantConversation,
   );
-  const updatePrivacy = useMutation(
-    api.assistantConversations.updateAssistantConversationPrivacyMode,
-  );
   const sendMessage = useAction(api.assistantChat.sendVirtualMarcoMessage);
 
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [privacyConfirmOpen, setPrivacyConfirmOpen] = useState(false);
 
   const activeConversations = useMemo(
     () => (conversations ?? []).filter((item) => item.status === "active"),
@@ -78,35 +74,12 @@ export function ChatPage() {
     try {
       const id = await createConversation({
         currentUserId: userId,
-        privacyMode: "patient_safe",
+        privacyMode: "internal",
       });
       navigate(`/app/chat?c=${id}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Errore creazione");
     }
-  };
-
-  const handlePrivacyChange = async (mode: "patient_safe" | "internal") => {
-    if (!userId || !selectedId) return;
-    if (mode === "internal") {
-      setPrivacyConfirmOpen(true);
-      return;
-    }
-    await updatePrivacy({
-      currentUserId: userId,
-      conversationId: selectedId,
-      privacyMode: "patient_safe",
-    });
-  };
-
-  const confirmInternal = async () => {
-    if (!userId || !selectedId) return;
-    await updatePrivacy({
-      currentUserId: userId,
-      conversationId: selectedId,
-      privacyMode: "internal",
-    });
-    setPrivacyConfirmOpen(false);
   };
 
   const handleSend = async () => {
@@ -174,19 +147,18 @@ export function ChatPage() {
                   )}
                 >
                   <div className="line-clamp-2 font-medium">{item.title}</div>
-                  <div
-                    className={cn(
-                      "mt-1 text-[11px]",
-                      selectedId === item._id
-                        ? "text-primary-foreground/80"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {item.privacyMode === "internal"
-                      ? "Modalità interna"
-                      : "Patient safe"}
-                    {item.simulationId ? " · Simulazione" : ""}
-                  </div>
+                  {item.simulationId ? (
+                    <div
+                      className={cn(
+                        "mt-1 text-[11px]",
+                        selectedId === item._id
+                          ? "text-primary-foreground/80"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      Simulazione
+                    </div>
+                  ) : null}
                 </button>
               ))
             )}
@@ -218,56 +190,7 @@ export function ChatPage() {
                       : "Conversazione generale"}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant={
-                      conversation.privacyMode === "patient_safe"
-                        ? "default"
-                        : "outline"
-                    }
-                    onClick={() => void handlePrivacyChange("patient_safe")}
-                  >
-                    <Shield className="h-3.5 w-3.5" />
-                    Patient safe
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={
-                      conversation.privacyMode === "internal"
-                        ? "default"
-                        : "outline"
-                    }
-                    onClick={() => void handlePrivacyChange("internal")}
-                  >
-                    <ShieldAlert className="h-3.5 w-3.5" />
-                    Interna
-                  </Button>
-                </div>
               </div>
-
-              {privacyConfirmOpen ? (
-                <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-                  <p className="font-medium">Modalità riservata al personale.</p>
-                  <p className="mt-1">
-                    Verifica che il paziente non possa vedere lo schermo prima di
-                    mostrare costi aziendali, priorità, alert interni o altre
-                    informazioni riservate.
-                  </p>
-                  <div className="mt-2 flex gap-2">
-                    <Button size="sm" onClick={() => void confirmInternal()}>
-                      Confermo
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setPrivacyConfirmOpen(false)}
-                    >
-                      Annulla
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
 
               <div className="flex-1 space-y-3 overflow-y-auto p-4">
                 <div className="max-w-[90%] rounded-lg bg-muted px-3 py-2 text-sm whitespace-pre-wrap">
@@ -301,6 +224,9 @@ export function ChatPage() {
                       {message.role === "assistant" &&
                       message.status === "completed" ? (
                         <div className="mt-2 space-y-1 text-xs opacity-90">
+                          {message.usedPreScreeningContext ? (
+                            <div className="font-medium">Pre-screening</div>
+                          ) : null}
                           {badge ? (
                             <div className="font-medium">{badge}</div>
                           ) : null}
@@ -416,7 +342,7 @@ export function AskVirtualMarcoButton({
           simulationId,
           comparisonRunId,
           title: "Simulazione collegata",
-          privacyMode: "patient_safe",
+          privacyMode: "internal",
         }));
       navigate(`/app/chat?c=${id}`);
     } catch (error) {

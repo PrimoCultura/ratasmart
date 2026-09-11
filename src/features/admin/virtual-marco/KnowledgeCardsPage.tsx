@@ -33,6 +33,8 @@ export function KnowledgeCardsPage() {
   const { userId } = useCurrentUser();
   const cards = useQuery(api.knowledgeCards.listKnowledgeCardsAdmin);
   const setActive = useMutation(api.knowledgeCards.setKnowledgeCardActive);
+  const seedKnowledge = useMutation(api.seed.seedPcgKnowledgeBase2026);
+  const [seeding, setSeeding] = useState(false);
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<"ALL" | KnowledgeCategory>("ALL");
@@ -90,15 +92,52 @@ export function KnowledgeCardsPage() {
     }
   };
 
+  const runKnowledgeSeed = () => {
+    if (!userId) return;
+    setSeeding(true);
+    void seedKnowledge({ actorUserId: userId })
+      .then((summary) => {
+        toast.success(
+          `KB PCG: +${summary.created.length} create, ${summary.versioned.length} versionate, ${summary.skipped.length} invariate`,
+        );
+        if (summary.deactivatedDemo.length > 0) {
+          toast.message(
+            `DEMO TECNICA disattivate: ${summary.deactivatedDemo.length}`,
+          );
+        }
+        for (const warning of summary.warnings) {
+          toast.message(warning);
+        }
+      })
+      .catch((error: unknown) => {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Seed Knowledge Base non riuscito",
+        );
+      })
+      .finally(() => setSeeding(false));
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Base di conoscenza"
         description="Schede operative versionabili per Virtual Marco."
         actions={
-          <Button asChild>
-            <Link to="/admin/virtual-marco/conoscenza/nuova">Nuova scheda</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!userId || seeding}
+              onClick={runKnowledgeSeed}
+            >
+              {seeding ? "Caricamento…" : "Carica Knowledge Base PCG 2026"}
+            </Button>
+            <Button asChild>
+              <Link to="/admin/virtual-marco/conoscenza/nuova">Nuova scheda</Link>
+            </Button>
+          </div>
         }
       />
 
@@ -204,6 +243,13 @@ export function KnowledgeCardsPage() {
                   <Badge variant="outline">
                     {KNOWLEDGE_NETWORK_LABELS[card.network]}
                   </Badge>
+                  {card.title.includes("DEMO TECNICA") ||
+                  card.content.includes("NON USARE COME POLICY UFFICIALE") ? (
+                    <Badge variant="warning">DEMO</Badge>
+                  ) : card.sourceReference?.includes("PCG KB ufficiale") ||
+                    card.sourceReference?.includes("PCG KB 2026") ? (
+                    <Badge variant="outline">Ufficiale PCG</Badge>
+                  ) : null}
                   {card.isAlert ? <Badge variant="warning">Alert</Badge> : null}
                   <ActiveBadge active={card.isActive} />
                 </div>

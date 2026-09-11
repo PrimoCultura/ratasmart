@@ -56,7 +56,7 @@ export const createAssistantConversation = mutation({
       title: title.slice(0, 60),
       simulationId: args.simulationId,
       comparisonRunId: args.comparisonRunId,
-      privacyMode: args.privacyMode ?? "patient_safe",
+      privacyMode: args.privacyMode ?? "internal",
       status: "active",
       lastMessageAt: now,
       createdAt: now,

@@ -126,8 +126,13 @@ export function regenerateAmortizationFromInputSnapshot(input: {
     openingFeeValue: input.calculationInput.openingFeeValue,
     collectionFeePerInstallment:
       input.calculationInput.collectionFeePerInstallment,
+    installmentFeeType: input.calculationInput.installmentFeeType,
+    installmentFeeValue: input.calculationInput.installmentFeeValue,
+    internalCostPercentApplied:
+      input.calculationInput.internalCostPercentApplied,
     internalCostPercentAt24Months:
       input.calculationInput.internalCostPercentAt24Months,
+    internalCostBase: input.calculationInput.internalCostBase,
     firstInstallmentDelayDays:
       input.calculationInput.firstInstallmentDelayDays,
   });

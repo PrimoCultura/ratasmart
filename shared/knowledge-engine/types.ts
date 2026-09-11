@@ -23,9 +23,16 @@ export type ChatPrivacyMode = "patient_safe" | "internal";
 
 export type KnowledgeSelectionContext = {
   network: "PCG" | "DES";
+  /** @deprecated Preferire companyIds per query multi-finanziaria. */
   companyId?: string;
+  /** Finanziarie matchate nella domanda (tutte, non solo la prima). */
+  companyIds?: string[];
+  /** @deprecated Preferire productIds. */
   productId?: string;
+  productIds?: string[];
+  /** @deprecated Preferire financialTableIds. */
   financialTableId?: string;
+  financialTableIds?: string[];
   userQuestion?: string;
   calculationDate: number;
   /** Default: internal (admin preview / selezione completa). */

@@ -138,8 +138,11 @@ describe("scope", () => {
     const result = selectRelevantKnowledgeCards(cards, {
       network: "PCG",
       companyId: "comp-1",
+      companyIds: ["comp-1"],
       productId: "prod-1",
+      productIds: ["prod-1"],
       financialTableId: "tab-1",
+      financialTableIds: ["tab-1"],
       calculationDate: now,
     });
 

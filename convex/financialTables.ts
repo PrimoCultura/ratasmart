@@ -3,11 +3,21 @@ import { mutation, query } from "./_generated/server";
 import { isCurrentlyValid, requireAdmin } from "./lib/authHelpers";
 import {
   defaultRequiresManagerAuthorization,
+  installmentFeeTypeValidator,
+  internalCostBaseValidator,
   networkValidator,
   openingFeeTypeValidator,
   productCategoryValidator,
   validateFinancialTableEconomics,
 } from "./lib/financialValidation";
+
+const durationTermValidator = v.object({
+  durationMonths: v.number(),
+  minimumAmount: v.number(),
+  maximumAmount: v.number(),
+  customerTanPercent: v.optional(v.number()),
+  internalCostPercent: v.optional(v.number()),
+});
 
 const tableEconomicsArgs = {
   minimumAmount: v.number(),
@@ -19,10 +29,66 @@ const tableEconomicsArgs = {
   openingFeeType: openingFeeTypeValidator,
   openingFeeValue: v.number(),
   collectionFeePerInstallment: v.number(),
+  installmentFeeType: v.optional(installmentFeeTypeValidator),
+  installmentFeeValue: v.optional(v.number()),
   internalCostPercentAt24Months: v.optional(v.number()),
+  internalCostBase: v.optional(internalCostBaseValidator),
+  durationTerms: v.optional(v.array(durationTermValidator)),
   firstInstallmentDelayDays: v.array(v.number()),
   requiresManagerAuthorizationNotice: v.boolean(),
 };
+
+function legacyCollectionFeeFromInstallment(args: {
+  installmentFeeType?: "none" | "fixed" | "percentage_of_requested_amount";
+  installmentFeeValue?: number;
+  collectionFeePerInstallment: number;
+}): number {
+  if (args.installmentFeeType === undefined) {
+    return args.collectionFeePerInstallment;
+  }
+  if (args.installmentFeeType === "fixed") {
+    return args.installmentFeeValue ?? 0;
+  }
+  return 0;
+}
+
+function normalizeDurationTerms(
+  terms:
+    | Array<{
+        durationMonths: number;
+        minimumAmount: number;
+        maximumAmount: number;
+        customerTanPercent?: number;
+        internalCostPercent?: number;
+      }>
+    | undefined,
+) {
+  if (!terms || terms.length === 0) {
+    return undefined;
+  }
+  return [...terms]
+    .map((term) => {
+      const normalized: {
+        durationMonths: number;
+        minimumAmount: number;
+        maximumAmount: number;
+        customerTanPercent?: number;
+        internalCostPercent?: number;
+      } = {
+        durationMonths: term.durationMonths,
+        minimumAmount: term.minimumAmount,
+        maximumAmount: term.maximumAmount,
+      };
+      if (term.customerTanPercent !== undefined) {
+        normalized.customerTanPercent = term.customerTanPercent;
+      }
+      if (term.internalCostPercent !== undefined) {
+        normalized.internalCostPercent = term.internalCostPercent;
+      }
+      return normalized;
+    })
+    .sort((a, b) => a.durationMonths - b.durationMonths);
+}
 
 export const listFinancialTablesAdmin = query({
   args: {},
@@ -171,8 +237,12 @@ export const createFinancialTable = mutation({
       customerTanPercent: args.customerTanPercent,
       openingFeeType: args.openingFeeType,
       openingFeeValue: args.openingFeeType === "none" ? 0 : args.openingFeeValue,
-      collectionFeePerInstallment: args.collectionFeePerInstallment,
+      collectionFeePerInstallment: legacyCollectionFeeFromInstallment(args),
+      installmentFeeType: args.installmentFeeType,
+      installmentFeeValue: args.installmentFeeValue,
       internalCostPercentAt24Months: args.internalCostPercentAt24Months,
+      internalCostBase: args.internalCostBase,
+      durationTerms: normalizeDurationTerms(args.durationTerms),
       firstInstallmentDelayDays: [...args.firstInstallmentDelayDays].sort(
         (a, b) => a - b,
       ),
@@ -288,8 +358,12 @@ export const createNewFinancialTableVersion = mutation({
       customerTanPercent: args.customerTanPercent,
       openingFeeType: args.openingFeeType,
       openingFeeValue: args.openingFeeType === "none" ? 0 : args.openingFeeValue,
-      collectionFeePerInstallment: args.collectionFeePerInstallment,
+      collectionFeePerInstallment: legacyCollectionFeeFromInstallment(args),
+      installmentFeeType: args.installmentFeeType,
+      installmentFeeValue: args.installmentFeeValue,
       internalCostPercentAt24Months: args.internalCostPercentAt24Months,
+      internalCostBase: args.internalCostBase,
+      durationTerms: normalizeDurationTerms(args.durationTerms),
       firstInstallmentDelayDays: [...args.firstInstallmentDelayDays].sort(
         (a, b) => a - b,
       ),

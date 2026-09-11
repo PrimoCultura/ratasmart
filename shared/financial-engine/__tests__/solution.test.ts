@@ -7,6 +7,7 @@ import {
   calculateFinancialSolution,
   calculateFrenchInstallment,
   calculateInternalCost,
+  resolveInstallmentFee,
 } from "../index.ts";
 
 /**
@@ -139,8 +140,9 @@ describe("calculateInternalCost", () => {
   ] as const;
 
   for (const item of cases) {
-    it(`10% a 24 mesi → ${item.months} mesi = ${item.applied}%`, () => {
+    it(`LEGACY FALLBACK 10% a 24 mesi → ${item.months} mesi = ${item.applied}%`, () => {
       const result = calculateInternalCost({
+        requestedAmount: 1000,
         financedAmount: 1000,
         durationMonths: item.months,
         internalCostPercentAt24Months: 10,
@@ -151,13 +153,78 @@ describe("calculateInternalCost", () => {
     });
   }
 
-  it("assenza costo → netto = finanziato", () => {
+  it("usa internalCostPercentApplied esatto senza proporzione", () => {
     const result = calculateInternalCost({
+      requestedAmount: 3000,
+      financedAmount: 3000,
+      durationMonths: 12,
+      internalCostPercentApplied: 4.44,
+      internalCostPercentAt24Months: 10,
+    });
+    expect(result.internalCostPercentApplied).toBeCloseTo(4.44, 8);
+    expect(result.internalCostAmount).toBe(133.2);
+    expect(result.netAmountPaidToCompany).toBe(2866.8);
+  });
+
+  it("assenza costo → netto = importo richiesto", () => {
+    const result = calculateInternalCost({
+      requestedAmount: 1000,
       financedAmount: 1000,
       durationMonths: 24,
     });
     expect(result.internalCostAmount).toBe(0);
     expect(result.netAmountPaidToCompany).toBe(1000);
+  });
+
+  it("commissione finanziata non aumenta il netto liquidato (caso NBQ)", () => {
+    const result = calculateInternalCost({
+      requestedAmount: 1000,
+      financedAmount: 1015,
+      durationMonths: 12,
+      internalCostPercentApplied: 0,
+    });
+    expect(result.internalCostAmount).toBe(0);
+    expect(result.netAmountPaidToCompany).toBe(1000);
+  });
+
+  it("commissione % importo richiesto costante su ogni rata (NE9)", () => {
+    const fee = resolveInstallmentFee({
+      requestedAmount: 1000,
+      installmentFeeType: "percentage_of_requested_amount",
+      installmentFeeValue: 0.6,
+    });
+    expect(fee.feePerInstallment).toBe(6);
+
+    const result = calculateFinancialSolution({
+      requestedAmount: 1000,
+      durationMonths: 10,
+      customerTanPercent: 0,
+      openingFeeType: "none",
+      openingFeeValue: 0,
+      installmentFeeType: "percentage_of_requested_amount",
+      installmentFeeValue: 0.6,
+      firstInstallmentDelayDays: 30,
+    });
+    expect(result.regularBaseInstallmentAmount).toBe(100);
+    expect(result.collectionFeePerInstallment).toBe(6);
+    expect(result.regularTotalInstallmentAmount).toBe(106);
+    expect(result.totalCustomerRepayment).toBe(1060);
+    expect(result.netAmountPaidToCompany).toBe(1000);
+    expect(result.amortizationSchedule.every((row) => row.collectionFeeAmount === 6)).toBe(
+      true,
+    );
+  });
+
+  it("internalCostBase requested_amount (S8L)", () => {
+    const result = calculateInternalCost({
+      requestedAmount: 3000,
+      financedAmount: 3075,
+      durationMonths: 12,
+      internalCostPercentApplied: 4.75,
+      internalCostBase: "requested_amount",
+    });
+    expect(result.internalCostAmount).toBe(142.5);
+    expect(result.netAmountPaidToCompany).toBe(2857.5);
   });
 });
 
@@ -218,6 +285,8 @@ describe("calculateFinancialSolution – casi di accettazione", () => {
     expect(result.regularBaseInstallmentAmount).toBeCloseTo(89.47, 1);
     expect(result.regularTotalInstallmentAmount).toBeCloseTo(90.97, 1);
     expect(result.amortizationSchedule.at(-1)?.closingBalance).toBe(0);
+    // Netto liquidato = richiesto, non finanziato
+    expect(result.netAmountPaidToCompany).toBe(1000);
 
     const independentBase = independentFrenchInstallment(1015, 10.5, 12);
     expect(result.theoreticalBaseInstallmentAmount).toBeCloseTo(

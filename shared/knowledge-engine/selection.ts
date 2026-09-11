@@ -1,5 +1,9 @@
 import { cardCharacterCount } from "./normalize.ts";
-import { resolveCardVisibility, scoreKnowledgeCard } from "./scoring.ts";
+import {
+  filterCurrentKnowledgeVersions,
+  resolveCardVisibility,
+  scoreKnowledgeCard,
+} from "./scoring.ts";
 import type {
   KnowledgeSelectionContext,
   KnowledgeSelectionOptions,
@@ -54,7 +58,8 @@ export function selectRelevantKnowledgeCards(
   const maxCards = options?.maxCards ?? DEFAULT_MAX_CARDS;
   const maxCharacters = options?.maxCharacters ?? DEFAULT_MAX_CHARACTERS;
 
-  const scored = cards.map((card) => scoreKnowledgeCard(card, context));
+  const currentCards = filterCurrentKnowledgeVersions(cards);
+  const scored = currentCards.map((card) => scoreKnowledgeCard(card, context));
   const eligible = scored.filter((item) => item.eligible).sort(sortScored);
 
   const selected: SelectedKnowledgeCard[] = [];

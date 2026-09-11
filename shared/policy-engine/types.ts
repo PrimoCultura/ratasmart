@@ -4,6 +4,8 @@ export type EmploymentType =
   | "pensioner"
   | "self_employed"
   | "unemployed"
+  | "student"
+  | "housewife"
   | "other";
 
 export type PatientFinancialProfile = {
@@ -12,6 +14,12 @@ export type PatientFinancialProfile = {
   temporaryContractExpiry?: number;
   isNonEuCitizen: boolean;
   residencePermitExpiry?: number;
+  /** Solo ricevuta di rinnovo del permesso (senza permesso in corso di validità). */
+  hasResidencePermitRenewalReceiptOnly?: boolean;
+  /** Anzianità lavorativa in mesi (tempo indeterminato). */
+  employmentSeniorityMonths?: number;
+  /** Presenza di un garante dichiarato dal CM. */
+  hasGuarantor?: boolean;
 };
 
 export type CompatibilityStatus =
@@ -30,6 +38,10 @@ export type PolicyRuleType =
   | "pensioner_allowed"
   | "non_eu_allowed"
   | "residence_permit_expiry"
+  | "renewal_receipt_allowed"
+  | "minimum_employment_seniority_months"
+  | "maximum_amount_for_employment_types"
+  | "guarantor_required_for_employment_types"
   | "minimum_amount"
   | "maximum_amount"
   | "minimum_duration"
@@ -120,6 +132,13 @@ export type RuntimeFinancialSolution = {
     compatibility: CompatibilityEvaluation;
     technicalExclusionReasons: string[];
   }>;
+  durationTermSnapshot?: {
+    durationMonths: number;
+    minimumAmount: number;
+    maximumAmount: number;
+    customerTanPercent: number;
+    internalCostPercent?: number;
+  };
 };
 
 export type SimulationComparisonResult = {

@@ -45,6 +45,9 @@ type FormValues = {
   temporaryContractExpiry: string;
   isNonEuCitizen: "yes" | "no";
   residencePermitExpiry: string;
+  hasResidencePermitRenewalReceiptOnly: boolean;
+  employmentSeniorityMonths: string;
+  hasGuarantor: "yes" | "no" | "";
   requestedAmount: string;
   targetInstallment: string;
   requestedDurationMonths: string;
@@ -79,6 +82,9 @@ export function SimulatorPage() {
       temporaryContractExpiry: "",
       isNonEuCitizen: "no",
       residencePermitExpiry: "",
+      hasResidencePermitRenewalReceiptOnly: false,
+      employmentSeniorityMonths: "",
+      hasGuarantor: "",
       requestedAmount: "",
       targetInstallment: "",
       requestedDurationMonths: "",
@@ -90,6 +96,9 @@ export function SimulatorPage() {
   const isNonEuCitizen = form.watch("isNonEuCitizen");
   const showContractExpiry = employmentType === "temporary_employee";
   const showPermitExpiry = isNonEuCitizen === "yes";
+  const showSeniority = employmentType === "permanent_employee";
+  const showGuarantor =
+    employmentType === "student" || employmentType === "housewife";
 
   const onSubmit = form.handleSubmit(async (values) => {
     if (!userId) {
@@ -120,6 +129,21 @@ export function SimulatorPage() {
       temporaryContractExpiry: parseDateInput(values.temporaryContractExpiry),
       isNonEuCitizen: values.isNonEuCitizen === "yes",
       residencePermitExpiry: parseDateInput(values.residencePermitExpiry),
+      hasResidencePermitRenewalReceiptOnly:
+        values.isNonEuCitizen === "yes"
+          ? values.hasResidencePermitRenewalReceiptOnly
+          : undefined,
+      employmentSeniorityMonths:
+        values.employmentType === "permanent_employee" &&
+        values.employmentSeniorityMonths.trim()
+          ? Number(values.employmentSeniorityMonths)
+          : undefined,
+      hasGuarantor:
+        values.hasGuarantor === "yes"
+          ? true
+          : values.hasGuarantor === "no"
+            ? false
+            : undefined,
       requestedAmount,
       targetInstallment,
       requestedDurationMonths,
@@ -267,14 +291,62 @@ export function SimulatorPage() {
               </div>
             ) : null}
             {showPermitExpiry ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="residencePermitExpiry">
+                    Scadenza permesso di soggiorno
+                  </Label>
+                  <Input
+                    id="residencePermitExpiry"
+                    type="date"
+                    {...form.register("residencePermitExpiry")}
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={form.watch("hasResidencePermitRenewalReceiptOnly")}
+                    onChange={(e) =>
+                      form.setValue(
+                        "hasResidencePermitRenewalReceiptOnly",
+                        e.target.checked,
+                      )
+                    }
+                  />
+                  Solo ricevuta di rinnovo (senza permesso in corso di validità)
+                </label>
+              </>
+            ) : null}
+            {showSeniority ? (
               <div className="space-y-2">
-                <Label htmlFor="residencePermitExpiry">
-                  Scadenza permesso di soggiorno
+                <Label htmlFor="employmentSeniorityMonths">
+                  Anzianità lavorativa (mesi)
                 </Label>
                 <Input
-                  id="residencePermitExpiry"
-                  type="date"
-                  {...form.register("residencePermitExpiry")}
+                  id="employmentSeniorityMonths"
+                  inputMode="numeric"
+                  placeholder="es. 12"
+                  {...form.register("employmentSeniorityMonths")}
+                />
+              </div>
+            ) : null}
+            {showGuarantor ? (
+              <div className="space-y-2">
+                <Label>Garante dichiarato</Label>
+                <Controller
+                  control={form.control}
+                  name="hasGuarantor"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="yes">Sì</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 />
               </div>
             ) : null}

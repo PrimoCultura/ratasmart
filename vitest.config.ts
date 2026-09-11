@@ -17,6 +17,7 @@ export default defineConfig({
       "shared/comparison-snapshot/**/*.test.ts",
       "shared/knowledge-engine/**/*.test.ts",
       "shared/assistant-context/**/*.test.ts",
+      "shared/alternative-diagnostics/**/*.test.ts",
     ],
     environment: "node",
   },

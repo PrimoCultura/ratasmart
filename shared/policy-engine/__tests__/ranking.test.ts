@@ -46,6 +46,9 @@ function baseCalculation(
     totalCollectionFees: 0,
     totalCustomerRepayment: 5500,
     totalCustomerCosts: 500,
+    installmentFeeType: "none",
+    installmentFeeValue: 0,
+    internalCostBase: "financed_amount",
     internalCostPercentAt24Months: 0,
     internalCostPercentApplied: 0,
     internalCostAmount: 0,
@@ -91,7 +94,8 @@ function solution(
     priorityScore: partial.priorityScore ?? 0,
     priorityLabel: partial.priorityLabel,
     internalMessageIds: [],
-    requiresManagerAuthorizationNotice: false,
+    requiresManagerAuthorizationNotice:
+      partial.requiresManagerAuthorizationNotice ?? false,
     distanceFromTargetInstallment: partial.distanceFromTargetInstallment,
     technicalExclusionReasons: partial.technicalExclusionReasons ?? [],
   };
@@ -224,6 +228,121 @@ describe("rankFinancialSolutions", () => {
       }),
     ]);
     expect(ranked[0]?.solutionId).toBe("low");
+  });
+
+  it("senza costo aziendale precede tasso zero/agevolato anche con rata più alta", () => {
+    const ranked = rankFinancialSolutions([
+      solution({
+        solutionId: "zero",
+        companyName: "Agos",
+        tableCode: "PCA",
+        category: "zero_interest",
+        compatibility: compatibility("compatible"),
+        priorityScore: 100,
+        isCompanyPriority: true,
+        calculation: baseCalculation({
+          regularTotalInstallmentAmount: 100,
+          internalCostAmount: 150,
+          internalCostPercentApplied: 5,
+          customerTanPercent: 0,
+        }),
+      }),
+      solution({
+        solutionId: "standard",
+        companyName: "Agos",
+        tableCode: "NBQ",
+        category: "standard",
+        compatibility: compatibility("compatible"),
+        priorityScore: 0,
+        calculation: baseCalculation({
+          regularTotalInstallmentAmount: 180,
+          internalCostAmount: 0,
+          internalCostPercentApplied: 0,
+          customerTanPercent: 10.5,
+        }),
+      }),
+    ]);
+    expect(ranked.map((item) => item.solutionId)).toEqual([
+      "standard",
+      "zero",
+    ]);
+  });
+
+  it("dentro il gruppo senza costo resta priorità ↓ poi rata ↑", () => {
+    const ranked = rankFinancialSolutions([
+      solution({
+        solutionId: "std-high-rata",
+        companyName: "A",
+        tableCode: "A",
+        compatibility: compatibility("compatible"),
+        priorityScore: 0,
+        calculation: baseCalculation({
+          regularTotalInstallmentAmount: 200,
+          internalCostAmount: 0,
+        }),
+      }),
+      solution({
+        solutionId: "std-prio",
+        companyName: "B",
+        tableCode: "B",
+        compatibility: compatibility("compatible"),
+        priorityScore: 50,
+        calculation: baseCalculation({
+          regularTotalInstallmentAmount: 220,
+          internalCostAmount: 0,
+        }),
+      }),
+      solution({
+        solutionId: "with-cost",
+        companyName: "C",
+        tableCode: "C",
+        compatibility: compatibility("compatible"),
+        priorityScore: 999,
+        calculation: baseCalculation({
+          regularTotalInstallmentAmount: 90,
+          internalCostAmount: 100,
+        }),
+      }),
+    ]);
+    expect(ranked.map((item) => item.solutionId)).toEqual([
+      "std-prio",
+      "std-high-rata",
+      "with-cost",
+    ]);
+  });
+
+  it("NE9-like TAN 0 senza costo/auth resta nel gruppo senza costo", () => {
+    const ranked = rankFinancialSolutions([
+      solution({
+        solutionId: "ne9",
+        companyName: "Compass",
+        tableCode: "NE9",
+        category: "small_amount",
+        compatibility: compatibility("compatible"),
+        calculation: baseCalculation({
+          customerTanPercent: 0,
+          regularTotalInstallmentAmount: 106,
+          internalCostAmount: 0,
+          installmentFeeType: "percentage_of_requested_amount",
+          installmentFeeValue: 0.6,
+          collectionFeePerInstallment: 6,
+        }),
+      }),
+      solution({
+        solutionId: "s8l",
+        companyName: "Deutsche Bank",
+        tableCode: "S8L",
+        category: "zero_interest",
+        compatibility: compatibility("compatible"),
+        requiresManagerAuthorizationNotice: true,
+        calculation: baseCalculation({
+          customerTanPercent: 0,
+          regularTotalInstallmentAmount: 90,
+          internalCostAmount: 142.5,
+        }),
+      }),
+    ]);
+    expect(ranked.map((item) => item.solutionId)).toEqual(["ne9", "s8l"]);
   });
 
   it("soluzione incompatibile mai mostrata come prioritaria", () => {

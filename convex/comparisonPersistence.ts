@@ -25,6 +25,8 @@ const employmentTypeValidator = v.union(
   v.literal("pensioner"),
   v.literal("self_employed"),
   v.literal("unemployed"),
+  v.literal("student"),
+  v.literal("housewife"),
   v.literal("other"),
 );
 
@@ -48,11 +50,16 @@ export const persistComparisonRun = internalMutation({
       temporaryContractExpiry: v.optional(v.number()),
       isNonEuCitizen: v.boolean(),
       residencePermitExpiry: v.optional(v.number()),
+      hasResidencePermitRenewalReceiptOnly: v.optional(v.boolean()),
+      employmentSeniorityMonths: v.optional(v.number()),
+      hasGuarantor: v.optional(v.boolean()),
     }),
     result: v.any(),
     messagesById: v.any(),
     tables: v.array(v.any()),
     products: v.array(v.any()),
+    diagnosticsSnapshot: v.optional(v.any()),
+    alternativeDiagnosticsVersion: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -144,6 +151,8 @@ export const persistComparisonRun = internalMutation({
       runNumber,
       createdAt,
       ...stripUndefinedDeep(runFields),
+      diagnosticsSnapshot: args.diagnosticsSnapshot,
+      alternativeDiagnosticsVersion: args.alternativeDiagnosticsVersion,
     });
 
     const runtimeToPersistentIds: Record<

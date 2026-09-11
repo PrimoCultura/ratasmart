@@ -34,15 +34,30 @@ import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { NETWORKS, type Network } from "@/lib/constants/app";
 import {
   COMMON_FIRST_INSTALLMENT_DELAYS,
+  INSTALLMENT_FEE_TYPES,
+  INSTALLMENT_FEE_TYPE_LABELS,
+  INTERNAL_COST_BASES,
+  INTERNAL_COST_BASE_LABELS,
   OPENING_FEE_TYPES,
   OPENING_FEE_TYPE_LABELS,
   PRODUCT_CATEGORIES,
   PRODUCT_CATEGORY_LABELS,
   defaultRequiresManagerAuthorization,
   generateDurationMonths,
+  type InstallmentFeeType,
+  type InternalCostBase,
   type OpeningFeeType,
   type ProductCategory,
 } from "@/lib/constants/financial";
+import { financialTableEconomicsSchema } from "@/lib/validation/schemas";
+
+type DurationTermFormRow = {
+  durationMonths: string;
+  minimumAmount: string;
+  maximumAmount: string;
+  customerTanPercent: string;
+  internalCostPercent: string;
+};
 
 type TableFormState = {
   companyId: string;
@@ -52,6 +67,7 @@ type TableFormState = {
   displayName: string;
   description: string;
   category: ProductCategory;
+  useDurationTerms: boolean;
   minimumAmount: string;
   maximumAmount: string;
   minimumDurationMonths: string;
@@ -61,14 +77,26 @@ type TableFormState = {
   openingFeeType: OpeningFeeType;
   openingFeeValue: string;
   collectionFeePerInstallment: string;
+  installmentFeeType: InstallmentFeeType;
+  installmentFeeValue: string;
   internalCostPercentAt24Months: string;
+  internalCostBase: InternalCostBase;
   firstInstallmentDelayDays: number[];
   requiresManagerAuthorizationNotice: boolean;
   isActive: boolean;
   validFrom: string;
   validTo: string;
   adminNotes: string;
+  durationTerms: DurationTermFormRow[];
 };
+
+const emptyTerm = (): DurationTermFormRow => ({
+  durationMonths: "",
+  minimumAmount: "",
+  maximumAmount: "",
+  customerTanPercent: "",
+  internalCostPercent: "",
+});
 
 const emptyForm: TableFormState = {
   companyId: "",
@@ -78,6 +106,7 @@ const emptyForm: TableFormState = {
   displayName: "",
   description: "",
   category: "standard",
+  useDurationTerms: false,
   minimumAmount: "",
   maximumAmount: "",
   minimumDurationMonths: "12",
@@ -87,13 +116,17 @@ const emptyForm: TableFormState = {
   openingFeeType: "none",
   openingFeeValue: "0",
   collectionFeePerInstallment: "0",
+  installmentFeeType: "fixed",
+  installmentFeeValue: "0",
   internalCostPercentAt24Months: "",
+  internalCostBase: "financed_amount",
   firstInstallmentDelayDays: [30],
   requiresManagerAuthorizationNotice: false,
   isActive: true,
   validFrom: "",
   validTo: "",
   adminNotes: "",
+  durationTerms: [],
 };
 
 function parseOptionalDate(value: string): number | undefined {
@@ -106,6 +139,16 @@ function parseOptionalDate(value: string): number | undefined {
 function toDateInput(value?: number): string {
   if (!value) return "";
   return new Date(value).toISOString().slice(0, 10);
+}
+
+function parseNumber(value: string): number {
+  return Number(value.replace(",", "."));
+}
+
+function parseOptionalNumber(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return parseNumber(trimmed);
 }
 
 type Mode = "create" | "view" | "newVersion";
@@ -134,6 +177,7 @@ export function TableFormPage({ mode }: { mode: Mode }) {
 
   useEffect(() => {
     if (mode === "create" || !existing || initialized) return;
+    const terms = existing.durationTerms ?? [];
     setForm({
       companyId: existing.companyId,
       productId: existing.productId,
@@ -142,6 +186,7 @@ export function TableFormPage({ mode }: { mode: Mode }) {
       displayName: existing.displayName,
       description: existing.description ?? "",
       category: existing.category,
+      useDurationTerms: terms.length > 0,
       minimumAmount: String(existing.minimumAmount),
       maximumAmount: String(existing.maximumAmount),
       minimumDurationMonths: String(existing.minimumDurationMonths),
@@ -151,10 +196,17 @@ export function TableFormPage({ mode }: { mode: Mode }) {
       openingFeeType: existing.openingFeeType,
       openingFeeValue: String(existing.openingFeeValue),
       collectionFeePerInstallment: String(existing.collectionFeePerInstallment),
+      installmentFeeType:
+        existing.installmentFeeType ??
+        (existing.collectionFeePerInstallment > 0 ? "fixed" : "none"),
+      installmentFeeValue: String(
+        existing.installmentFeeValue ?? existing.collectionFeePerInstallment,
+      ),
       internalCostPercentAt24Months:
         existing.internalCostPercentAt24Months !== undefined
           ? String(existing.internalCostPercentAt24Months)
           : "",
+      internalCostBase: existing.internalCostBase ?? "financed_amount",
       firstInstallmentDelayDays: existing.firstInstallmentDelayDays,
       requiresManagerAuthorizationNotice:
         existing.requiresManagerAuthorizationNotice,
@@ -162,23 +214,42 @@ export function TableFormPage({ mode }: { mode: Mode }) {
       validFrom: toDateInput(existing.validFrom),
       validTo: toDateInput(existing.validTo),
       adminNotes: existing.adminNotes ?? "",
+      durationTerms: terms.map((term) => ({
+        durationMonths: String(term.durationMonths),
+        minimumAmount: String(term.minimumAmount),
+        maximumAmount: String(term.maximumAmount),
+        customerTanPercent:
+          term.customerTanPercent !== undefined
+            ? String(term.customerTanPercent)
+            : "",
+        internalCostPercent:
+          term.internalCostPercent !== undefined
+            ? String(term.internalCostPercent)
+            : "",
+      })),
     });
     setInitialized(true);
   }, [existing, initialized, mode]);
 
-  const durationPreview = useMemo(
-    () =>
-      generateDurationMonths(
-        Number(form.minimumDurationMonths),
-        Number(form.maximumDurationMonths),
-        Number(form.durationStepMonths),
-      ),
-    [
-      form.minimumDurationMonths,
-      form.maximumDurationMonths,
-      form.durationStepMonths,
-    ],
-  );
+  const durationPreview = useMemo(() => {
+    if (form.useDurationTerms) {
+      return form.durationTerms
+        .map((term) => Number(term.durationMonths))
+        .filter((value) => Number.isFinite(value) && value > 0)
+        .sort((a, b) => a - b);
+    }
+    return generateDurationMonths(
+      Number(form.minimumDurationMonths),
+      Number(form.maximumDurationMonths),
+      Number(form.durationStepMonths),
+    );
+  }, [
+    form.useDurationTerms,
+    form.durationTerms,
+    form.minimumDurationMonths,
+    form.maximumDurationMonths,
+    form.durationStepMonths,
+  ]);
 
   const economicsLocked = mode === "view";
 
@@ -191,20 +262,91 @@ export function TableFormPage({ mode }: { mode: Mode }) {
   }
 
   const buildPayload = () => {
-    const minimumAmount = Number(form.minimumAmount.replace(",", "."));
-    const maximumAmount = Number(form.maximumAmount.replace(",", "."));
-    const minimumDurationMonths = Number(form.minimumDurationMonths);
-    const maximumDurationMonths = Number(form.maximumDurationMonths);
-    const durationStepMonths = Number(form.durationStepMonths);
-    const customerTanPercent = Number(form.customerTanPercent.replace(",", "."));
-    const openingFeeValue = Number(form.openingFeeValue.replace(",", ".") || "0");
-    const collectionFeePerInstallment = Number(
-      form.collectionFeePerInstallment.replace(",", ".") || "0",
-    );
-    const internalRaw = form.internalCostPercentAt24Months.trim();
-    const internalCostPercentAt24Months = internalRaw
-      ? Number(internalRaw.replace(",", "."))
+    const durationTerms = form.useDurationTerms
+      ? [...form.durationTerms]
+          .map((term) => {
+            const mapped: {
+              durationMonths: number;
+              minimumAmount: number;
+              maximumAmount: number;
+              customerTanPercent?: number;
+              internalCostPercent?: number;
+            } = {
+              durationMonths: Number(term.durationMonths),
+              minimumAmount: parseNumber(term.minimumAmount),
+              maximumAmount: parseNumber(term.maximumAmount),
+            };
+            const tan = parseOptionalNumber(term.customerTanPercent);
+            const cost = parseOptionalNumber(term.internalCostPercent);
+            if (tan !== undefined) mapped.customerTanPercent = tan;
+            if (cost !== undefined) mapped.internalCostPercent = cost;
+            return mapped;
+          })
+          .sort((a, b) => a.durationMonths - b.durationMonths)
       : undefined;
+
+    let minimumAmount = parseNumber(form.minimumAmount);
+    let maximumAmount = parseNumber(form.maximumAmount);
+    let minimumDurationMonths = Number(form.minimumDurationMonths);
+    let maximumDurationMonths = Number(form.maximumDurationMonths);
+    let durationStepMonths = Number(form.durationStepMonths);
+
+    if (durationTerms && durationTerms.length > 0) {
+      minimumAmount = Math.min(...durationTerms.map((t) => t.minimumAmount));
+      maximumAmount = Math.max(...durationTerms.map((t) => t.maximumAmount));
+      minimumDurationMonths = Math.min(
+        ...durationTerms.map((t) => t.durationMonths),
+      );
+      maximumDurationMonths = Math.max(
+        ...durationTerms.map((t) => t.durationMonths),
+      );
+      durationStepMonths = 1;
+    }
+
+    const customerTanPercent = parseNumber(form.customerTanPercent);
+    const openingFeeValue = parseNumber(form.openingFeeValue || "0");
+    const collectionFeePerInstallment = parseNumber(
+      form.collectionFeePerInstallment || "0",
+    );
+    const installmentFeeType = form.installmentFeeType;
+    const installmentFeeValue =
+      installmentFeeType === "none"
+        ? 0
+        : parseNumber(form.installmentFeeValue || "0");
+    const legacyCollection =
+      installmentFeeType === "fixed"
+        ? installmentFeeValue
+        : installmentFeeType === "none"
+          ? 0
+          : 0;
+    const internalCostPercentAt24Months = form.useDurationTerms
+      ? undefined
+      : parseOptionalNumber(form.internalCostPercentAt24Months);
+    const internalCostBase = form.internalCostBase;
+
+    const parsed = financialTableEconomicsSchema.safeParse({
+      useDurationTerms: form.useDurationTerms,
+      minimumAmount,
+      maximumAmount,
+      minimumDurationMonths,
+      maximumDurationMonths,
+      durationStepMonths,
+      customerTanPercent,
+      openingFeeType: form.openingFeeType,
+      openingFeeValue: form.openingFeeType === "none" ? 0 : openingFeeValue,
+      collectionFeePerInstallment: legacyCollection || collectionFeePerInstallment,
+      installmentFeeType,
+      installmentFeeValue,
+      internalCostPercentAt24Months,
+      firstInstallmentDelayDays: form.firstInstallmentDelayDays,
+      durationTerms,
+    });
+
+    if (!parsed.success) {
+      const message =
+        parsed.error.issues[0]?.message ?? "Dati economici non validi";
+      throw new Error(message);
+    }
 
     return {
       companyId: form.companyId as Id<"financialCompanies">,
@@ -222,8 +364,12 @@ export function TableFormPage({ mode }: { mode: Mode }) {
       customerTanPercent,
       openingFeeType: form.openingFeeType,
       openingFeeValue: form.openingFeeType === "none" ? 0 : openingFeeValue,
-      collectionFeePerInstallment,
+      collectionFeePerInstallment: legacyCollection || collectionFeePerInstallment,
+      installmentFeeType,
+      installmentFeeValue,
       internalCostPercentAt24Months,
+      internalCostBase,
+      durationTerms,
       firstInstallmentDelayDays: form.firstInstallmentDelayDays,
       requiresManagerAuthorizationNotice: form.requiresManagerAuthorizationNotice,
       isActive: form.isActive,
@@ -284,6 +430,18 @@ export function TableFormPage({ mode }: { mode: Mode }) {
         ? `Nuova versione · ${existing?.displayName ?? ""}`
         : existing?.displayName ?? "Dettaglio tabella";
 
+  const updateTerm = (
+    index: number,
+    patch: Partial<DurationTermFormRow>,
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      durationTerms: prev.durationTerms.map((term, i) =>
+        i === index ? { ...term, ...patch } : term,
+      ),
+    }));
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -291,7 +449,7 @@ export function TableFormPage({ mode }: { mode: Mode }) {
         description={
           mode === "view"
             ? "In visualizzazione puoi aggiornare solo metadati descrittivi. Per condizioni economiche usa «Nuova versione»."
-            : "Compila i campi. Validazione lato server obbligatoria."
+            : "Compila i campi. Validazione Zod + lato server obbligatoria."
         }
         actions={
           <Button asChild variant="outline">
@@ -417,64 +575,238 @@ export function TableFormPage({ mode }: { mode: Mode }) {
           </div>
         </Section>
 
-        <Section title="Importi">
-          <Field label="Importo minimo (€)">
-            <Input
+        <Section title="Modalità condizioni">
+          <label className="flex items-center gap-2 text-sm sm:col-span-2">
+            <Checkbox
               disabled={economicsLocked}
-              value={form.minimumAmount}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, minimumAmount: e.target.value }))
+              checked={form.useDurationTerms}
+              onCheckedChange={(checked) =>
+                setForm((prev) => ({
+                  ...prev,
+                  useDurationTerms: Boolean(checked),
+                  durationTerms:
+                    checked && prev.durationTerms.length === 0
+                      ? [emptyTerm()]
+                      : prev.durationTerms,
+                }))
               }
             />
-          </Field>
-          <Field label="Importo massimo (€)">
-            <Input
-              disabled={economicsLocked}
-              value={form.maximumAmount}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, maximumAmount: e.target.value }))
-              }
-            />
-          </Field>
+            Condizioni per singola durata
+          </label>
+          {form.useDurationTerms ? (
+            <p className="text-sm text-amber-800 sm:col-span-2">
+              Le condizioni per singola durata prevalgono sui limiti generali
+              della tabella.
+            </p>
+          ) : null}
         </Section>
 
-        <Section title="Durate">
-          <Field label="Durata minima (mesi)">
-            <Input
-              disabled={economicsLocked}
-              value={form.minimumDurationMonths}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  minimumDurationMonths: e.target.value,
-                }))
-              }
-            />
-          </Field>
-          <Field label="Durata massima (mesi)">
-            <Input
-              disabled={economicsLocked}
-              value={form.maximumDurationMonths}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  maximumDurationMonths: e.target.value,
-                }))
-              }
-            />
-          </Field>
-          <Field label="Step durata">
-            <Input
-              disabled={economicsLocked}
-              value={form.durationStepMonths}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  durationStepMonths: e.target.value,
-                }))
-              }
-            />
-          </Field>
+        {!form.useDurationTerms ? (
+          <>
+            <Section title="Importi">
+              <Field label="Importo minimo (€)">
+                <Input
+                  disabled={economicsLocked}
+                  value={form.minimumAmount}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      minimumAmount: e.target.value,
+                    }))
+                  }
+                />
+              </Field>
+              <Field label="Importo massimo (€)">
+                <Input
+                  disabled={economicsLocked}
+                  value={form.maximumAmount}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      maximumAmount: e.target.value,
+                    }))
+                  }
+                />
+              </Field>
+            </Section>
+
+            <Section title="Durate">
+              <Field label="Durata minima (mesi)">
+                <Input
+                  disabled={economicsLocked}
+                  value={form.minimumDurationMonths}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      minimumDurationMonths: e.target.value,
+                    }))
+                  }
+                />
+              </Field>
+              <Field label="Durata massima (mesi)">
+                <Input
+                  disabled={economicsLocked}
+                  value={form.maximumDurationMonths}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      maximumDurationMonths: e.target.value,
+                    }))
+                  }
+                />
+              </Field>
+              <Field label="Step durata">
+                <Input
+                  disabled={economicsLocked}
+                  value={form.durationStepMonths}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      durationStepMonths: e.target.value,
+                    }))
+                  }
+                />
+              </Field>
+              <div className="sm:col-span-2">
+                <p className="text-xs text-muted-foreground">
+                  Preview durate:{" "}
+                  {durationPreview.length > 0
+                    ? durationPreview.join(", ")
+                    : "parametri non validi"}
+                </p>
+              </div>
+            </Section>
+          </>
+        ) : (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">
+                Condizioni per singola durata
+              </CardTitle>
+              {!economicsLocked ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      durationTerms: [...prev.durationTerms, emptyTerm()],
+                    }))
+                  }
+                >
+                  Aggiungi durata
+                </Button>
+              ) : null}
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[720px] text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-muted-foreground">
+                      <th className="p-2">Durata</th>
+                      <th className="p-2">Importo minimo</th>
+                      <th className="p-2">Importo massimo</th>
+                      <th className="p-2">TAN</th>
+                      <th className="p-2">Costo aziendale %</th>
+                      <th className="p-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {form.durationTerms.map((term, index) => (
+                      <tr key={index} className="border-b">
+                        <td className="p-2">
+                          <Input
+                            disabled={economicsLocked}
+                            value={term.durationMonths}
+                            onChange={(e) =>
+                              updateTerm(index, {
+                                durationMonths: e.target.value,
+                              })
+                            }
+                          />
+                        </td>
+                        <td className="p-2">
+                          <Input
+                            disabled={economicsLocked}
+                            value={term.minimumAmount}
+                            onChange={(e) =>
+                              updateTerm(index, {
+                                minimumAmount: e.target.value,
+                              })
+                            }
+                          />
+                        </td>
+                        <td className="p-2">
+                          <Input
+                            disabled={economicsLocked}
+                            value={term.maximumAmount}
+                            onChange={(e) =>
+                              updateTerm(index, {
+                                maximumAmount: e.target.value,
+                              })
+                            }
+                          />
+                        </td>
+                        <td className="p-2">
+                          <Input
+                            disabled={economicsLocked}
+                            placeholder="opz."
+                            value={term.customerTanPercent}
+                            onChange={(e) =>
+                              updateTerm(index, {
+                                customerTanPercent: e.target.value,
+                              })
+                            }
+                          />
+                        </td>
+                        <td className="p-2">
+                          <Input
+                            disabled={economicsLocked}
+                            placeholder="opz."
+                            value={term.internalCostPercent}
+                            onChange={(e) =>
+                              updateTerm(index, {
+                                internalCostPercent: e.target.value,
+                              })
+                            }
+                          />
+                        </td>
+                        <td className="p-2">
+                          {!economicsLocked ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  durationTerms: prev.durationTerms.filter(
+                                    (_t, i) => i !== index,
+                                  ),
+                                }))
+                              }
+                            >
+                              Elimina
+                            </Button>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Preview durate:{" "}
+                {durationPreview.length > 0
+                  ? durationPreview.join(", ")
+                  : "nessuna"}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        <Section title="Prima rata">
           <div className="sm:col-span-2 space-y-2">
             <Label>Prima rata disponibile (giorni)</Label>
             <div className="flex flex-wrap gap-4">
@@ -490,7 +822,9 @@ export function TableFormPage({ mode }: { mode: Mode }) {
                           ? [...prev.firstInstallmentDelayDays, day].sort(
                               (a, b) => a - b,
                             )
-                          : prev.firstInstallmentDelayDays.filter((d) => d !== day),
+                          : prev.firstInstallmentDelayDays.filter(
+                              (d) => d !== day,
+                            ),
                       }));
                     }}
                   />
@@ -498,12 +832,6 @@ export function TableFormPage({ mode }: { mode: Mode }) {
                 </label>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Preview durate:{" "}
-              {durationPreview.length > 0
-                ? durationPreview.join(", ")
-                : "parametri non validi"}
-            </p>
           </div>
         </Section>
 
@@ -553,14 +881,53 @@ export function TableFormPage({ mode }: { mode: Mode }) {
               }
             />
           </Field>
-          <Field label="Spesa incasso per rata (€)">
-            <Input
+          <Field label="Spesa/commissione per rata">
+            <Select
               disabled={economicsLocked}
-              value={form.collectionFeePerInstallment}
+              value={form.installmentFeeType}
+              onValueChange={(value) =>
+                setForm((prev) => ({
+                  ...prev,
+                  installmentFeeType: value as InstallmentFeeType,
+                  installmentFeeValue:
+                    value === "none" ? "0" : prev.installmentFeeValue,
+                  collectionFeePerInstallment:
+                    value === "none" ? "0" : prev.collectionFeePerInstallment,
+                }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {INSTALLMENT_FEE_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {INSTALLMENT_FEE_TYPE_LABELS[type]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field
+            label={
+              form.installmentFeeType === "percentage_of_requested_amount"
+                ? "Valore % importo richiesto/rata"
+                : "Valore €/rata"
+            }
+          >
+            <Input
+              disabled={
+                economicsLocked || form.installmentFeeType === "none"
+              }
+              value={form.installmentFeeValue}
               onChange={(e) =>
                 setForm((prev) => ({
                   ...prev,
-                  collectionFeePerInstallment: e.target.value,
+                  installmentFeeValue: e.target.value,
+                  collectionFeePerInstallment:
+                    prev.installmentFeeType === "fixed"
+                      ? e.target.value
+                      : prev.collectionFeePerInstallment,
                 }))
               }
             />
@@ -568,18 +935,48 @@ export function TableFormPage({ mode }: { mode: Mode }) {
         </Section>
 
         <Section title="Condizioni azienda">
-          <Field label="Costo interno % a 24 mesi">
-            <Input
+          <Field label="Base costo aziendale %">
+            <Select
               disabled={economicsLocked}
-              value={form.internalCostPercentAt24Months}
-              onChange={(e) =>
+              value={form.internalCostBase}
+              onValueChange={(value) =>
                 setForm((prev) => ({
                   ...prev,
-                  internalCostPercentAt24Months: e.target.value,
+                  internalCostBase: value as InternalCostBase,
                 }))
               }
-            />
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {INTERNAL_COST_BASES.map((base) => (
+                  <SelectItem key={base} value={base}>
+                    {INTERNAL_COST_BASE_LABELS[base]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
+          {!form.useDurationTerms ? (
+            <Field label="Costo interno % a 24 mesi">
+              <Input
+                disabled={economicsLocked}
+                value={form.internalCostPercentAt24Months}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    internalCostPercentAt24Months: e.target.value,
+                  }))
+                }
+              />
+            </Field>
+          ) : (
+            <p className="text-xs text-muted-foreground sm:col-span-2">
+              Con condizioni per durata, il costo aziendale va impostato sul
+              singolo termine (valore esatto, senza proporzione da 24 mesi).
+            </p>
+          )}
           <label className="flex items-center gap-2 text-sm sm:col-span-2">
             <Checkbox
               disabled={economicsLocked}
@@ -587,7 +984,7 @@ export function TableFormPage({ mode }: { mode: Mode }) {
               onCheckedChange={(checked) =>
                 setForm((prev) => ({
                   ...prev,
-                  requiresManagerAuthorizationNotice: checked,
+                  requiresManagerAuthorizationNotice: Boolean(checked),
                 }))
               }
             />
@@ -611,7 +1008,7 @@ export function TableFormPage({ mode }: { mode: Mode }) {
               disabled={economicsLocked}
               checked={form.isActive}
               onCheckedChange={(checked) =>
-                setForm((prev) => ({ ...prev, isActive: checked }))
+                setForm((prev) => ({ ...prev, isActive: Boolean(checked) }))
               }
             />
             Attiva

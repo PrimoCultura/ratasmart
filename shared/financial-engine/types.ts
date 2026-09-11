@@ -1,13 +1,34 @@
 export type OpeningFeeType = "none" | "fixed" | "percentage";
 
+export type InstallmentFeeType =
+  | "none"
+  | "fixed"
+  | "percentage_of_requested_amount";
+
+export type InternalCostBase = "requested_amount" | "financed_amount";
+
 export type FinancialCalculationInput = {
   requestedAmount: number;
   durationMonths: number;
   customerTanPercent: number;
   openingFeeType: OpeningFeeType;
   openingFeeValue: number;
-  collectionFeePerInstallment: number;
+  /**
+   * Legacy / risolto: spesa fissa in euro per rata.
+   * Se installmentFeeType è assente, viene interpretata come fee fissa.
+   */
+  collectionFeePerInstallment?: number;
+  installmentFeeType?: InstallmentFeeType;
+  installmentFeeValue?: number;
+  /**
+   * Costo aziendale esatto già risolto per la durata.
+   * Se presente, ha priorità sul fallback proporzionale a 24 mesi.
+   */
+  internalCostPercentApplied?: number;
+  /** @deprecated Preferire internalCostPercentApplied per tabelle reali. */
   internalCostPercentAt24Months?: number;
+  /** Default legacy: financed_amount. */
+  internalCostBase?: InternalCostBase;
   firstInstallmentDelayDays: number;
 };
 
@@ -56,6 +77,9 @@ export type FinancialCalculationResult = {
   monthlyNominalRate: number;
   theoreticalBaseInstallmentAmount: number;
   regularBaseInstallmentAmount: number;
+  installmentFeeType: InstallmentFeeType;
+  installmentFeeValue: number;
+  /** Fee in euro effettivamente applicata a ogni rata. */
   collectionFeePerInstallment: number;
   regularTotalInstallmentAmount: number;
   finalTotalInstallmentAmount: number;
@@ -64,6 +88,7 @@ export type FinancialCalculationResult = {
   totalCollectionFees: number;
   totalCustomerRepayment: number;
   totalCustomerCosts: number;
+  internalCostBase: InternalCostBase;
   internalCostPercentAt24Months: number;
   internalCostPercentApplied: number;
   internalCostAmount: number;

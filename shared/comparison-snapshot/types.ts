@@ -11,9 +11,18 @@ export type EmploymentTypeSnapshot =
   | "pensioner"
   | "self_employed"
   | "unemployed"
+  | "student"
+  | "housewife"
   | "other";
 
 export type OpeningFeeTypeSnapshot = "none" | "fixed" | "percentage";
+
+export type InstallmentFeeTypeSnapshot =
+  | "none"
+  | "fixed"
+  | "percentage_of_requested_amount";
+
+export type InternalCostBaseSnapshot = "requested_amount" | "financed_amount";
 
 export type ComparisonSource =
   | "initial_calculation"
@@ -37,6 +46,9 @@ export type PatientSnapshot = {
   temporaryContractExpiry?: number;
   isNonEuCitizen: boolean;
   residencePermitExpiry?: number;
+  hasResidencePermitRenewalReceiptOnly?: boolean;
+  employmentSeniorityMonths?: number;
+  hasGuarantor?: boolean;
 };
 
 export type CompanySnapshot = {
@@ -65,13 +77,31 @@ export type FinancialTableSnapshot = {
   minimumDurationMonths: number;
   maximumDurationMonths: number;
   durationStepMonths: number;
+  durationTerms?: Array<{
+    durationMonths: number;
+    minimumAmount: number;
+    maximumAmount: number;
+    customerTanPercent?: number;
+    internalCostPercent?: number;
+  }>;
   customerTanPercent: number;
   openingFeeType: OpeningFeeTypeSnapshot;
   openingFeeValue: number;
   collectionFeePerInstallment: number;
+  installmentFeeType?: InstallmentFeeTypeSnapshot;
+  installmentFeeValue?: number;
   internalCostPercentAt24Months?: number;
+  internalCostBase?: InternalCostBaseSnapshot;
   supportedFirstInstallmentDelayDays: number[];
   requiresManagerAuthorizationNotice: boolean;
+};
+
+export type DurationTermSnapshot = {
+  durationMonths: number;
+  minimumAmount: number;
+  maximumAmount: number;
+  customerTanPercent: number;
+  internalCostPercent?: number;
 };
 
 export type CalculationInputSnapshot = {
@@ -81,7 +111,12 @@ export type CalculationInputSnapshot = {
   openingFeeType: OpeningFeeTypeSnapshot;
   openingFeeValue: number;
   collectionFeePerInstallment: number;
+  installmentFeeType?: InstallmentFeeTypeSnapshot;
+  installmentFeeValue?: number;
+  /** Costo aziendale esatto fotografato (prioritario in rigenerazione). */
+  internalCostPercentApplied?: number;
   internalCostPercentAt24Months?: number;
+  internalCostBase?: InternalCostBaseSnapshot;
   firstInstallmentDelayDays: number;
 };
 
@@ -93,6 +128,8 @@ export type CalculationSummarySnapshot = {
   customerTanPercent: number;
   regularBaseInstallmentAmount: number;
   collectionFeePerInstallment: number;
+  installmentFeeType?: InstallmentFeeTypeSnapshot;
+  installmentFeeValue?: number;
   regularTotalInstallmentAmount: number;
   finalTotalInstallmentAmount: number;
   taegPercent?: number;
@@ -102,6 +139,7 @@ export type CalculationSummarySnapshot = {
   totalCollectionFees: number;
   totalCustomerRepayment: number;
   totalCustomerCosts: number;
+  internalCostBase?: InternalCostBaseSnapshot;
   internalCostPercentApplied: number;
   internalCostAmount: number;
   netAmountPaidToCompany: number;
@@ -172,6 +210,7 @@ export type PersistentSolutionFields = {
   companySnapshot: CompanySnapshot;
   productSnapshot: ProductSnapshot;
   financialTableSnapshot: FinancialTableSnapshot;
+  durationTermSnapshot?: DurationTermSnapshot;
   calculationInputSnapshot: CalculationInputSnapshot;
   calculationSummary?: CalculationSummarySnapshot;
   compatibilitySnapshot: CompatibilitySnapshot;
@@ -204,11 +243,21 @@ export type TableMetadataForSnapshot = {
   minimumDurationMonths: number;
   maximumDurationMonths: number;
   durationStepMonths: number;
+  durationTerms?: Array<{
+    durationMonths: number;
+    minimumAmount: number;
+    maximumAmount: number;
+    customerTanPercent?: number;
+    internalCostPercent?: number;
+  }>;
   customerTanPercent: number;
   openingFeeType: OpeningFeeTypeSnapshot;
   openingFeeValue: number;
   collectionFeePerInstallment: number;
+  installmentFeeType?: InstallmentFeeTypeSnapshot;
+  installmentFeeValue?: number;
   internalCostPercentAt24Months?: number;
+  internalCostBase?: InternalCostBaseSnapshot;
   firstInstallmentDelayDays: number[];
   requiresManagerAuthorizationNotice: boolean;
 };

@@ -149,6 +149,9 @@ export const completeAssistantTurn = internalMutation({
         matchReasons: v.array(v.string()),
       }),
     ),
+    usedPreScreeningContext: v.optional(v.boolean()),
+    preScreeningIntents: v.optional(v.array(v.string())),
+    matchedCompanyIds: v.optional(v.array(v.id("financialCompanies"))),
   },
   handler: async (ctx, args) => {
     const message = await ctx.db.get(args.assistantMessageId);
@@ -177,6 +180,9 @@ export const completeAssistantTurn = internalMutation({
       outputTokens: args.outputTokens,
       totalTokens: args.totalTokens,
       knowledgeCardsProvided: args.sources.length,
+      usedPreScreeningContext: args.usedPreScreeningContext,
+      preScreeningIntents: args.preScreeningIntents,
+      matchedCompanyIds: args.matchedCompanyIds,
       completedAt: now,
       errorCode: undefined,
       errorMessage: undefined,

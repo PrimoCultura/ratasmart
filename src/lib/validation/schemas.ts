@@ -68,6 +68,13 @@ export const patientSimulationSchema = z
       required_error: "Indicare se il paziente è cittadino extracomunitario",
     }),
     residencePermitExpiry: z.number().optional(),
+    hasResidencePermitRenewalReceiptOnly: z.boolean().optional(),
+    employmentSeniorityMonths: z
+      .number()
+      .int()
+      .gte(0)
+      .optional(),
+    hasGuarantor: z.boolean().optional(),
     requestedAmount: z
       .number({
         required_error: "L'importo richiesto è obbligatorio",
@@ -117,11 +124,14 @@ export const patientSimulationSchema = z
     }
 
     if (data.isNonEuCitizen) {
-      if (data.residencePermitExpiry === undefined) {
+      if (data.hasResidencePermitRenewalReceiptOnly === true) {
+        // Solo ricevuta: la scadenza permesso non è utilizzabile come requisito.
+      } else if (data.residencePermitExpiry === undefined) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["residencePermitExpiry"],
-          message: "La scadenza del permesso di soggiorno è obbligatoria",
+          message:
+            "Indicare la scadenza del permesso oppure segnalare la sola ricevuta di rinnovo",
         });
       } else if (data.residencePermitExpiry <= now) {
         ctx.addIssue({
@@ -134,3 +144,114 @@ export const patientSimulationSchema = z
   });
 
 export type PatientSimulationInput = z.infer<typeof patientSimulationSchema>;
+
+const optionalNonNegativeNumber = z
+  .number({ invalid_type_error: "Inserisci un numero valido" })
+  .finite()
+  .gte(0)
+  .optional();
+
+export const durationTermSchema = z.object({
+  durationMonths: z
+    .number({ invalid_type_error: "Durata non valida" })
+    .int("La durata deve essere intera")
+    .gt(0, "La durata deve essere maggiore di zero"),
+  minimumAmount: z
+    .number({ invalid_type_error: "Importo minimo non valido" })
+    .gt(0, "L'importo minimo deve essere maggiore di zero"),
+  maximumAmount: z
+    .number({ invalid_type_error: "Importo massimo non valido" })
+    .gt(0, "L'importo massimo deve essere maggiore di zero"),
+  customerTanPercent: optionalNonNegativeNumber,
+  internalCostPercent: optionalNonNegativeNumber,
+}).superRefine((term, ctx) => {
+  if (term.maximumAmount < term.minimumAmount) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["maximumAmount"],
+      message: "Il massimo deve essere ≥ al minimo",
+    });
+  }
+});
+
+export const financialTableEconomicsSchema = z
+  .object({
+    useDurationTerms: z.boolean(),
+    minimumAmount: z
+      .number({ invalid_type_error: "Importo minimo non valido" })
+      .gt(0, "L'importo minimo deve essere maggiore di zero"),
+    maximumAmount: z
+      .number({ invalid_type_error: "Importo massimo non valido" })
+      .gt(0, "L'importo massimo deve essere maggiore di zero"),
+    minimumDurationMonths: z
+      .number({ invalid_type_error: "Durata minima non valida" })
+      .int()
+      .gt(0),
+    maximumDurationMonths: z
+      .number({ invalid_type_error: "Durata massima non valida" })
+      .int()
+      .gt(0),
+    durationStepMonths: z
+      .number({ invalid_type_error: "Step durata non valido" })
+      .int()
+      .gt(0),
+    customerTanPercent: z
+      .number({ invalid_type_error: "TAN non valido" })
+      .gte(0),
+    openingFeeType: z.enum(["none", "fixed", "percentage"]),
+    openingFeeValue: z.number().gte(0),
+    collectionFeePerInstallment: z.number().gte(0),
+    internalCostPercentAt24Months: optionalNonNegativeNumber,
+    firstInstallmentDelayDays: z
+      .array(z.number().int().gt(0))
+      .min(1, "Indica almeno un ritardo prima rata"),
+    durationTerms: z.array(durationTermSchema).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.maximumAmount < data.minimumAmount) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["maximumAmount"],
+        message: "L'importo massimo deve essere ≥ al minimo",
+      });
+    }
+    if (data.maximumDurationMonths < data.minimumDurationMonths) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["maximumDurationMonths"],
+        message: "La durata massima deve essere ≥ alla minima",
+      });
+    }
+    if (data.openingFeeType === "none" && data.openingFeeValue !== 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["openingFeeValue"],
+        message: "Con commissione assente il valore deve essere zero",
+      });
+    }
+    if (data.useDurationTerms) {
+      if (!data.durationTerms || data.durationTerms.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["durationTerms"],
+          message: "Aggiungi almeno una durata",
+        });
+      } else {
+        const seen = new Set<number>();
+        for (const term of data.durationTerms) {
+          if (seen.has(term.durationMonths)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["durationTerms"],
+              message: `Durata duplicata: ${term.durationMonths} mesi`,
+            });
+          }
+          seen.add(term.durationMonths);
+        }
+      }
+    }
+  });
+
+export type FinancialTableEconomicsInput = z.infer<
+  typeof financialTableEconomicsSchema
+>;

@@ -63,9 +63,13 @@ export function PolicyDetailPage() {
   const valueFields = useMemo(() => {
     switch (form.ruleType) {
       case "employment_type_allowed":
+      case "guarantor_required_for_employment_types":
         return "employment";
+      case "maximum_amount_for_employment_types":
+        return "employment_numeric";
       case "pensioner_allowed":
       case "non_eu_allowed":
+      case "renewal_receipt_allowed":
         return "boolean";
       case "temporary_contract_expiry":
       case "residence_permit_expiry":
@@ -185,7 +189,7 @@ export function PolicyDetailPage() {
             </Select>
           </div>
 
-          {valueFields === "numeric" ? (
+          {valueFields === "numeric" || valueFields === "employment_numeric" ? (
             <div className="space-y-2">
               <Label>Valore numerico</Label>
               <Input
@@ -221,9 +225,10 @@ export function PolicyDetailPage() {
             </div>
           ) : null}
 
-          {valueFields === "employment" ? (
+          {valueFields === "employment" ||
+          valueFields === "employment_numeric" ? (
             <div className="sm:col-span-2 space-y-2">
-              <Label>Tipologie ammesse</Label>
+              <Label>Tipologie di lavoro</Label>
               <div className="grid gap-2 sm:grid-cols-2">
                 {EMPLOYMENT_TYPES.map((type) => (
                   <label key={type} className="flex items-center gap-2 text-sm">

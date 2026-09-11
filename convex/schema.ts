@@ -17,12 +17,25 @@ const openingFeeType = v.union(
   v.literal("percentage"),
 );
 
+const installmentFeeType = v.union(
+  v.literal("none"),
+  v.literal("fixed"),
+  v.literal("percentage_of_requested_amount"),
+);
+
+const internalCostBase = v.union(
+  v.literal("requested_amount"),
+  v.literal("financed_amount"),
+);
+
 const employmentType = v.union(
   v.literal("permanent_employee"),
   v.literal("temporary_employee"),
   v.literal("pensioner"),
   v.literal("self_employed"),
   v.literal("unemployed"),
+  v.literal("student"),
+  v.literal("housewife"),
   v.literal("other"),
 );
 
@@ -35,6 +48,10 @@ const policyRuleType = v.union(
   v.literal("pensioner_allowed"),
   v.literal("non_eu_allowed"),
   v.literal("residence_permit_expiry"),
+  v.literal("renewal_receipt_allowed"),
+  v.literal("minimum_employment_seniority_months"),
+  v.literal("maximum_amount_for_employment_types"),
+  v.literal("guarantor_required_for_employment_types"),
   v.literal("minimum_amount"),
   v.literal("maximum_amount"),
   v.literal("minimum_duration"),
@@ -73,6 +90,22 @@ const resultGroup = v.union(
   v.literal("verification_required"),
   v.literal("not_compatible"),
 );
+
+const durationTerm = v.object({
+  durationMonths: v.number(),
+  minimumAmount: v.number(),
+  maximumAmount: v.number(),
+  customerTanPercent: v.optional(v.number()),
+  internalCostPercent: v.optional(v.number()),
+});
+
+const durationTermSnapshot = v.object({
+  durationMonths: v.number(),
+  minimumAmount: v.number(),
+  maximumAmount: v.number(),
+  customerTanPercent: v.number(),
+  internalCostPercent: v.optional(v.number()),
+});
 
 const comparisonStatus = v.union(
   v.literal("not_started"),
@@ -149,6 +182,9 @@ export default defineSchema({
     temporaryContractExpiry: v.optional(v.number()),
     isNonEuCitizen: v.optional(v.boolean()),
     residencePermitExpiry: v.optional(v.number()),
+    hasResidencePermitRenewalReceiptOnly: v.optional(v.boolean()),
+    employmentSeniorityMonths: v.optional(v.number()),
+    hasGuarantor: v.optional(v.boolean()),
     requestedDurationMonths: v.optional(v.number()),
     preferredFirstInstallmentDelayDays: v.optional(v.number()),
     lastComparisonAt: v.optional(v.number()),
@@ -185,6 +221,9 @@ export default defineSchema({
       temporaryContractExpiry: v.optional(v.number()),
       isNonEuCitizen: v.boolean(),
       residencePermitExpiry: v.optional(v.number()),
+      hasResidencePermitRenewalReceiptOnly: v.optional(v.boolean()),
+      employmentSeniorityMonths: v.optional(v.number()),
+      hasGuarantor: v.optional(v.boolean()),
     }),
     compatibleSolutionsCount: v.number(),
     verificationRequiredSolutionsCount: v.number(),
@@ -196,6 +235,12 @@ export default defineSchema({
     engineVersion: v.string(),
     policyEngineVersion: v.string(),
     source: comparisonSource,
+    /**
+     * Diagnostica deterministica alternative (solo run nuovi).
+     * Assenza = run storico senza diagnostica persistita.
+     */
+    diagnosticsSnapshot: v.optional(v.any()),
+    alternativeDiagnosticsVersion: v.optional(v.string()),
   })
     .index("by_simulation", ["simulationId"])
     .index("by_simulation_created_at", ["simulationId", "createdAt"])
@@ -234,14 +279,19 @@ export default defineSchema({
       minimumDurationMonths: v.number(),
       maximumDurationMonths: v.number(),
       durationStepMonths: v.number(),
+      durationTerms: v.optional(v.array(durationTerm)),
       customerTanPercent: v.number(),
       openingFeeType,
       openingFeeValue: v.number(),
       collectionFeePerInstallment: v.number(),
+      installmentFeeType: v.optional(installmentFeeType),
+      installmentFeeValue: v.optional(v.number()),
       internalCostPercentAt24Months: v.optional(v.number()),
+      internalCostBase: v.optional(internalCostBase),
       supportedFirstInstallmentDelayDays: v.array(v.number()),
       requiresManagerAuthorizationNotice: v.boolean(),
     }),
+    durationTermSnapshot: v.optional(durationTermSnapshot),
     calculationInputSnapshot: v.object({
       requestedAmount: v.number(),
       durationMonths: v.number(),
@@ -249,7 +299,11 @@ export default defineSchema({
       openingFeeType,
       openingFeeValue: v.number(),
       collectionFeePerInstallment: v.number(),
+      installmentFeeType: v.optional(installmentFeeType),
+      installmentFeeValue: v.optional(v.number()),
+      internalCostPercentApplied: v.optional(v.number()),
       internalCostPercentAt24Months: v.optional(v.number()),
+      internalCostBase: v.optional(internalCostBase),
       firstInstallmentDelayDays: v.number(),
     }),
     calculationSummary: v.optional(
@@ -261,6 +315,8 @@ export default defineSchema({
         customerTanPercent: v.number(),
         regularBaseInstallmentAmount: v.number(),
         collectionFeePerInstallment: v.number(),
+        installmentFeeType: v.optional(installmentFeeType),
+        installmentFeeValue: v.optional(v.number()),
         regularTotalInstallmentAmount: v.number(),
         finalTotalInstallmentAmount: v.number(),
         taegPercent: v.optional(v.number()),
@@ -270,6 +326,7 @@ export default defineSchema({
         totalCollectionFees: v.number(),
         totalCustomerRepayment: v.number(),
         totalCustomerCosts: v.number(),
+        internalCostBase: v.optional(internalCostBase),
         internalCostPercentApplied: v.number(),
         internalCostAmount: v.number(),
         netAmountPaidToCompany: v.number(),
@@ -376,7 +433,11 @@ export default defineSchema({
     openingFeeType,
     openingFeeValue: v.number(),
     collectionFeePerInstallment: v.number(),
+    installmentFeeType: v.optional(installmentFeeType),
+    installmentFeeValue: v.optional(v.number()),
     internalCostPercentAt24Months: v.optional(v.number()),
+    internalCostBase: v.optional(internalCostBase),
+    durationTerms: v.optional(v.array(durationTerm)),
     firstInstallmentDelayDays: v.array(v.number()),
     requiresManagerAuthorizationNotice: v.boolean(),
     isActive: v.boolean(),
@@ -593,6 +654,9 @@ export default defineSchema({
     outputTokens: v.optional(v.number()),
     totalTokens: v.optional(v.number()),
     knowledgeCardsProvided: v.optional(v.number()),
+    usedPreScreeningContext: v.optional(v.boolean()),
+    preScreeningIntents: v.optional(v.array(v.string())),
+    matchedCompanyIds: v.optional(v.array(v.id("financialCompanies"))),
     simulationId: v.optional(v.id("simulations")),
     comparisonRunId: v.optional(v.id("simulationComparisonRuns")),
     errorCode: v.optional(v.string()),

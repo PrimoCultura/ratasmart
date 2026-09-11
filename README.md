@@ -4,7 +4,7 @@
 
 Applicazione interna per Clinic Manager: confronta prodotti finanziari, calcola rate, verifica l’aderenza formale alle policy, riceve spiegazioni via chat AI e salva le simulazioni.
 
-Stato attuale: **Fase 1 + Fase 2 + Fase 3A + Fase 3B + Fase 3C + Fase 4A + Fase 4B** completate.
+Stato attuale: **Fase 1 + Fase 2 + Fase 3A + Fase 3B + Fase 3C + Fase 4A + Fase 4B + pre-screening Virtual Marco** completate.
 
 ## Stack
 
@@ -44,6 +44,21 @@ npm run dev
 | Variabile | Descrizione |
 |---|---|
 | `VITE_CONVEX_URL` | URL del deployment Convex |
+
+## Staging Vercel
+
+Frontend staging su **Vercel**; backend sullo **stesso Convex DEV** già esistente (nessun nuovo deployment Convex, nessun `npx convex deploy` nel flusso di staging frontend).
+
+| Impostazione Vercel | Valore |
+|---|---|
+| Framework | Vite |
+| Build Command | `npm run build` |
+| Output Directory | `dist` |
+| Env (Preview/Production) | `VITE_CONVEX_URL` = URL del Convex DEV |
+
+- `OPENAI_API_KEY` e `AI_PROVIDER_MODE` restano **solo** su Convex (`npx convex env set …`), mai su Vercel né come `VITE_*`.
+- `vercel.json` riscrive le route SPA su `/index.html` (refresh e deep link).
+- Autenticazione: demo attuale (nessun Auth0 in staging).
 
 ## Comandi
 
@@ -460,6 +475,27 @@ Seed demo (nuova versione, senza mutare in-place):
 - nessuna modifica della simulazione dalla chat;
 - nessuno streaming;
 - nessun Auth0 / fiscale / PDF / esito pratica.
+
+## Virtual Marco – Pre-screening (senza simulazione)
+
+Virtual Marco supporta due modalità informative:
+
+1. **PRE-SCREENING** — disponibile anche senza simulazione aperta. Usa tabelle finanziarie attive, policy strutturate valide e knowledge card pertinenti per un primo filtro operativo (età, importi, durate, lavoro, permesso, pensione, documenti, garanti, finanziarie/prodotti).
+2. **ASSISTENZA ALLA SIMULAZIONE** — utilizza risultati e snapshot deterministici già calcolati dal financial-engine e dal policy-engine.
+
+**Virtual Marco non esegue autonomamente calcoli finanziari** (rata, TAN, TAEG, costi, ammortamento). Per un calcolo economico senza simulazione indirizza il CM al simulatore.
+
+Il riconoscimento degli intent è deterministico (nessuna seconda chiamata LLM). Le finanziarie/prodotti/tabelle citate vengono matchate dal catalogo attivo Convex (con alias tecnici da iniziali, es. “Deutsche Bank” → “DB”).
+
+Audit opzionale sui messaggi assistant: `usedPreScreeningContext`, `preScreeningIntents`, `matchedCompanyIds`.
+
+### Policy formali PCG 2026
+
+Seed idempotente: `seedPcgFinancingPolicies2026` (admin → Policy → “Carica policy finanziamenti PCG 2026”).
+
+Carica requisiti paziente Agos / Compass / Deutsche Bank (età, lavoro, permesso, ricevuta, studente/casalinga). Non modifica TAN/importi/durate delle tabelle.
+
+Prompt PRE-SCREENING: `activateVirtualMarcoPreScreeningPrompt` o `seedVirtualMarcoDemo` se manca la sezione PRE-SCREENING.
 
 ### Comandi
 

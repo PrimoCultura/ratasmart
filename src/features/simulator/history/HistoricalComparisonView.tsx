@@ -1,15 +1,31 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
+import {
+  resolveComparisonDiagnostics,
+  type ComparisonDiagnostics,
+} from "../../../../shared/alternative-diagnostics";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingState } from "@/components/common/LoadingState";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   EMPLOYMENT_TYPE_LABELS,
   type EmploymentType,
 } from "@/lib/constants/financial";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/formatting/currency";
-import { HistoricalSolutionCard } from "./HistoricalSolutionCard";
+import {
+  ComparisonHeader,
+  ComparisonSection,
+} from "../comparison";
+import { hasCompanyCostOrAuth } from "../comparison/solutionDisplay";
+import { ComparisonDiagnosticsCard } from "./ComparisonDiagnosticsCard";
 import { ProposedSolutionBadge } from "./ProposedSolutionBadge";
 
 type ComparisonBundle = {
@@ -47,6 +63,56 @@ export function HistoricalComparisonView({
   isRecalculatingDuration,
 }: HistoricalComparisonViewProps) {
   const [showIncompatible, setShowIncompatible] = useState(false);
+  const [expandedSolutionId, setExpandedSolutionId] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    setExpandedSolutionId(null);
+    setShowIncompatible(false);
+  }, [bundle?.run._id]);
+
+  const diagnostics = useMemo(() => {
+    if (!bundle) return null;
+    const { run, solutions } = bundle;
+    const compatibleCount = solutions.filter(
+      (item) => item.resultGroup === "compatible",
+    ).length;
+    if (compatibleCount > 0) return null;
+
+    const patient = run.patientSnapshot;
+    const persisted = (
+      run as Doc<"simulationComparisonRuns"> & {
+        diagnosticsSnapshot?: ComparisonDiagnostics;
+      }
+    ).diagnosticsSnapshot;
+
+    return resolveComparisonDiagnostics({
+      persistedDiagnostics: persisted,
+      hasCompatibleSolutions: false,
+      calculationDate: run.calculationDate,
+      requestedAmount: run.requestedAmount,
+      selectedDurationMonths: run.selectedDurationMonths,
+      firstInstallmentDelayDays: run.selectedFirstInstallmentDelayDays,
+      patient: {
+        age: patient.age,
+        employmentType: patient.employmentType,
+        temporaryContractExpiry: patient.temporaryContractExpiry,
+        isNonEuCitizen: patient.isNonEuCitizen,
+        residencePermitExpiry: patient.residencePermitExpiry,
+        hasResidencePermitRenewalReceiptOnly:
+          patient.hasResidencePermitRenewalReceiptOnly,
+        employmentSeniorityMonths: patient.employmentSeniorityMonths,
+        hasGuarantor: patient.hasGuarantor,
+      },
+      solutions: solutions.map((item) => ({
+        resultGroup: item.resultGroup,
+        companyShortName: item.companySnapshot.shortName,
+        compatibilitySnapshot: item.compatibilitySnapshot,
+        technicalExclusionReasons: item.technicalExclusionReasons,
+      })),
+    });
+  }, [bundle]);
 
   if (bundle === undefined) {
     return <LoadingState label="Caricamento confronto…" />;
@@ -62,13 +128,37 @@ export function HistoricalComparisonView({
 
   const { run, solutions, proposedSolutionId } = bundle;
   const patient = run.patientSnapshot;
+  const isCurrentRun = !run.isHistorical;
+
   const compatible = solutions.filter((item) => item.resultGroup === "compatible");
+  const compatibleWithoutCost = compatible.filter(
+    (item) => !hasCompanyCostOrAuth(item),
+  );
+  const compatibleWithCost = compatible.filter((item) =>
+    hasCompanyCostOrAuth(item),
+  );
   const verification = solutions.filter(
     (item) => item.resultGroup === "verification_required",
   );
   const incompatible = solutions.filter(
     (item) => item.resultGroup === "not_compatible",
   );
+
+  const handleToggleExpanded = (solutionId: string) => {
+    setExpandedSolutionId((current) =>
+      current === solutionId ? null : solutionId,
+    );
+  };
+
+  const sectionShared = {
+    proposedSolutionId,
+    hasExistingProposal,
+    readOnly,
+    isCurrentRun,
+    expandedSolutionId,
+    onToggleExpanded: handleToggleExpanded,
+    onPropose,
+  } as const;
 
   return (
     <div className="space-y-6">
@@ -85,9 +175,11 @@ export function HistoricalComparisonView({
                 {run.isLatest ? (
                   <Badge variant="secondary">Confronto attuale</Badge>
                 ) : null}
-                <Badge variant="outline">
-                  Condizioni fotografate al momento del calcolo
-                </Badge>
+                {run.isHistorical ? (
+                  <Badge variant="outline">
+                    Condizioni fotografate al momento del calcolo
+                  </Badge>
+                ) : null}
               </div>
               <p className="text-sm text-muted-foreground">
                 {formatDateTime(run.calculationDate)} · Rete {run.network} ·{" "}
@@ -113,10 +205,7 @@ export function HistoricalComparisonView({
                   : "Non indicata"
               }
             />
-            <Info
-              label="Paziente"
-              value={`${patient.firstName} ${patient.lastName}, ${patient.age} anni`}
-            />
+            <Info label="Età paziente" value={`${patient.age} anni`} />
             <Info
               label="Lavoro"
               value={
@@ -148,24 +237,24 @@ export function HistoricalComparisonView({
           !run.isHistorical &&
           onChangeDuration &&
           availableDurations.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm text-muted-foreground">Durata confronto:</p>
-              {availableDurations.map((duration) => (
-                <Button
-                  key={duration}
-                  type="button"
-                  size="sm"
-                  variant={
-                    duration === run.selectedDurationMonths
-                      ? "default"
-                      : "outline"
-                  }
-                  disabled={isRecalculatingDuration}
-                  onClick={() => onChangeDuration(duration)}
-                >
-                  {duration} mesi
-                </Button>
-              ))}
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-sm text-muted-foreground">Durata confronto</p>
+              <Select
+                value={String(run.selectedDurationMonths)}
+                disabled={isRecalculatingDuration}
+                onValueChange={(value) => onChangeDuration(Number(value))}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Seleziona durata" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableDurations.map((duration) => (
+                    <SelectItem key={duration} value={String(duration)}>
+                      {duration} mesi
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           ) : null}
 
@@ -201,89 +290,85 @@ export function HistoricalComparisonView({
         </CardContent>
       </Card>
 
-      <SolutionSection
-        title="Soluzioni compatibili con i requisiti formali"
-        empty="Nessuna soluzione compatibile per questo confronto."
-        solutions={compatible}
-        proposedSolutionId={proposedSolutionId}
-        hasExistingProposal={hasExistingProposal}
-        readOnly={readOnly}
-        onPropose={onPropose}
-      />
+      <div className="space-y-4">
+        <ComparisonHeader
+          requestedAmount={run.requestedAmount}
+          durationMonths={run.selectedDurationMonths}
+          targetInstallment={run.targetInstallment}
+        />
 
-      <SolutionSection
-        title="Soluzioni che richiedono una verifica"
-        empty="Nessuna soluzione in verifica per questo confronto."
-        solutions={verification}
-        proposedSolutionId={proposedSolutionId}
-        hasExistingProposal={hasExistingProposal}
-        readOnly={readOnly}
-        onPropose={onPropose}
-      />
+        <section className="space-y-4">
+          <h2 className="sr-only">Soluzioni compatibili</h2>
+          {compatible.length === 0 ? (
+            diagnostics ? (
+              <ComparisonDiagnosticsCard diagnostics={diagnostics} />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Nessuna soluzione compatibile per questo confronto.
+              </p>
+            )
+          ) : (
+            <>
+              {compatibleWithoutCost.length > 0 ? (
+                <ComparisonSection
+                  title="Senza costo aziendale"
+                  description="Soluzioni da valutare per prime"
+                  empty="Nessuna soluzione senza costo aziendale."
+                  headingLevel="h3"
+                  solutions={compatibleWithoutCost}
+                  tone="default"
+                  {...sectionShared}
+                />
+              ) : null}
+              {compatibleWithCost.length > 0 ? (
+                <ComparisonSection
+                  title="Soluzioni con costo aziendale"
+                  description="Richiedono autorizzazione del responsabile prima del caricamento pratica."
+                  empty="Nessuna soluzione con costo aziendale."
+                  headingLevel="h3"
+                  solutions={compatibleWithCost}
+                  tone="company_cost"
+                  {...sectionShared}
+                />
+              ) : null}
+            </>
+          )}
+        </section>
 
-      <section className="space-y-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setShowIncompatible((value) => !value)}
-        >
-          {showIncompatible
-            ? "Nascondi soluzioni non compatibili"
-            : "Mostra soluzioni non compatibili"}
-        </Button>
-        {showIncompatible ? (
-          <SolutionSection
-            title="Soluzioni non compatibili"
-            empty="Nessuna soluzione non compatibile."
-            solutions={incompatible}
-            proposedSolutionId={proposedSolutionId}
-            hasExistingProposal={hasExistingProposal}
-            readOnly={readOnly}
-            onPropose={onPropose}
+        {verification.length > 0 ? (
+          <ComparisonSection
+            title="Soluzioni che richiedono una verifica"
+            empty="Nessuna soluzione in verifica per questo confronto."
+            solutions={verification}
+            tone="verification"
+            {...sectionShared}
           />
         ) : null}
-      </section>
-    </div>
-  );
-}
 
-function SolutionSection({
-  title,
-  empty,
-  solutions,
-  proposedSolutionId,
-  hasExistingProposal,
-  readOnly,
-  onPropose,
-}: {
-  title: string;
-  empty: string;
-  solutions: Doc<"simulationComparisonSolutions">[];
-  proposedSolutionId?: Id<"simulationComparisonSolutions">;
-  hasExistingProposal: boolean;
-  readOnly: boolean;
-  onPropose?: (solutionId: Id<"simulationComparisonSolutions">) => Promise<void>;
-}) {
-  return (
-    <section className="space-y-3">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      {solutions.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{empty}</p>
-      ) : (
-        solutions.map((solution) => (
-          <HistoricalSolutionCard
-            key={solution._id}
-            solution={solution}
-            isProposed={proposedSolutionId === solution._id || solution.isProposed}
-            hasExistingProposal={hasExistingProposal}
-            readOnly={readOnly}
-            onPropose={
-              onPropose ? () => onPropose(solution._id) : undefined
-            }
-          />
-        ))
-      )}
-    </section>
+        <section className="space-y-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowIncompatible((value) => !value)}
+            aria-expanded={showIncompatible}
+          >
+            {showIncompatible
+              ? "Nascondi soluzioni non compatibili"
+              : "Mostra soluzioni non compatibili"}
+          </Button>
+          {showIncompatible ? (
+            <ComparisonSection
+              title="Soluzioni non compatibili"
+              empty="Nessuna soluzione non compatibile."
+              solutions={incompatible}
+              tone="incompatible"
+              grid={false}
+              {...sectionShared}
+            />
+          ) : null}
+        </section>
+      </div>
+    </div>
   );
 }
 

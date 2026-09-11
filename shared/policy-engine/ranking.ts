@@ -15,30 +15,55 @@ function installmentSortValue(solution: RuntimeFinancialSolution): number {
   );
 }
 
+/** Gruppo 1: senza costo/autorizzazione; Gruppo 2: con costo o alert autorizzazione. */
+function hasCorporateCostOrAuthorization(
+  solution: RuntimeFinancialSolution,
+): boolean {
+  return (
+    (solution.calculation?.internalCostAmount ?? 0) > 0 ||
+    solution.requiresManagerAuthorizationNotice
+  );
+}
+
+function compareCompatibleWithinGroup(
+  a: RuntimeFinancialSolution,
+  b: RuntimeFinancialSolution,
+): number {
+  if (b.priorityScore !== a.priorityScore) {
+    return b.priorityScore - a.priorityScore;
+  }
+  const installmentDiff = installmentSortValue(a) - installmentSortValue(b);
+  if (installmentDiff !== 0) return installmentDiff;
+  const taegDiff = taegSortValue(a) - taegSortValue(b);
+  if (taegDiff !== 0) return taegDiff;
+  const companyDiff = a.companyName.localeCompare(b.companyName, "it");
+  if (companyDiff !== 0) return companyDiff;
+  return a.tableCode.localeCompare(b.tableCode, "it");
+}
+
 /**
  * Ordina le soluzioni:
- * 1. compatible (priorità ↓, rata ↑, TAEG ↑, nome, codice)
+ * 1. compatible — prima senza costo/autorizzazione, poi con costo/autorizzazione;
+ *    dentro ogni gruppo: priorità ↓, rata ↑, TAEG ↑, nome, codice
  * 2. verification_required (rata ↑, nome, codice) — senza priorità
  * 3. not_compatible (motivi ↑, nome, codice)
+ *
+ * NE9 (TAN 0 ma costo 0 e senza auth) resta nel gruppo 1.
  */
 export function rankFinancialSolutions(
   solutions: RuntimeFinancialSolution[],
 ): RuntimeFinancialSolution[] {
-  const compatible = solutions
-    .filter((item) => item.compatibility.status === "compatible")
-    .sort((a, b) => {
-      if (b.priorityScore !== a.priorityScore) {
-        return b.priorityScore - a.priorityScore;
-      }
-      const installmentDiff =
-        installmentSortValue(a) - installmentSortValue(b);
-      if (installmentDiff !== 0) return installmentDiff;
-      const taegDiff = taegSortValue(a) - taegSortValue(b);
-      if (taegDiff !== 0) return taegDiff;
-      const companyDiff = a.companyName.localeCompare(b.companyName, "it");
-      if (companyDiff !== 0) return companyDiff;
-      return a.tableCode.localeCompare(b.tableCode, "it");
-    });
+  const compatible = solutions.filter(
+    (item) => item.compatibility.status === "compatible",
+  );
+
+  const withoutCost = compatible
+    .filter((item) => !hasCorporateCostOrAuthorization(item))
+    .sort(compareCompatibleWithinGroup);
+
+  const withCost = compatible
+    .filter((item) => hasCorporateCostOrAuthorization(item))
+    .sort(compareCompatibleWithinGroup);
 
   const verification = solutions
     .filter((item) => item.compatibility.status === "verification_required")
@@ -64,7 +89,7 @@ export function rankFinancialSolutions(
       return a.tableCode.localeCompare(b.tableCode, "it");
     });
 
-  return [...compatible, ...verification, ...incompatible];
+  return [...withoutCost, ...withCost, ...verification, ...incompatible];
 }
 
 export function findNearestTargetSolution(

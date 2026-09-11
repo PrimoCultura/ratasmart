@@ -4,6 +4,8 @@ export type {
   CashFlow,
   FinancialCalculationInput,
   FinancialCalculationResult,
+  InstallmentFeeType,
+  InternalCostBase,
   OpeningFeeType,
   TaegCalculationResult,
   TaegErrorCode,
@@ -26,6 +28,17 @@ export {
 } from "./durations.ts";
 
 export {
+  envelopeFromDurationTerms,
+  findDurationTerm,
+  hasDurationTerms,
+  resolveAllowedDurations,
+} from "./duration-terms.ts";
+export type {
+  DurationTerm,
+  TableDurationSource,
+} from "./duration-terms.ts";
+
+export {
   calculateFinancedAmount,
   calculateOpeningFee,
 } from "./opening-fee.ts";
@@ -43,7 +56,16 @@ export type {
 } from "./amortization.ts";
 
 export { calculateInternalCost } from "./internal-cost.ts";
-export type { InternalCostInput, InternalCostResult } from "./internal-cost.ts";
+export type {
+  InternalCostInput,
+  InternalCostResult,
+} from "./internal-cost.ts";
+
+export { resolveInstallmentFee } from "./installment-fee.ts";
+export type {
+  ResolveInstallmentFeeInput,
+  ResolvedInstallmentFee,
+} from "./installment-fee.ts";
 
 export {
   buildPatientCashFlows,

@@ -43,6 +43,8 @@ type SendResult = {
   errorMessage?: string;
   userFacingError?: string;
   knowledgeCardsProvided?: number;
+  usedPreScreeningContext?: boolean;
+  preScreeningIntents?: string[];
   inputTokens?: number;
   outputTokens?: number;
   totalTokens?: number;
@@ -121,6 +123,12 @@ export const sendVirtualMarcoMessage = action({
       throw new Error("Impossibile creare il messaggio assistant.");
     }
 
+    const auditFields = {
+      usedPreScreeningContext: bundle.usedPreScreeningContext === true,
+      preScreeningIntents: bundle.intents as string[],
+      matchedCompanyIds: bundle.matchedCompanyIds as Id<"financialCompanies">[],
+    };
+
     try {
       validateAssistantModelConfig(bundle.config);
 
@@ -162,6 +170,7 @@ export const sendVirtualMarcoMessage = action({
           outputTokens: result.outputTokens,
           totalTokens: result.totalTokens,
           sources: bundle.knowledgeSources,
+          ...auditFields,
         },
       );
 
@@ -176,6 +185,8 @@ export const sendVirtualMarcoMessage = action({
         requiresVerification: result.output.requiresVerification,
         verificationTarget: result.output.verificationTarget,
         knowledgeCardsProvided: bundle.knowledgeSources.length,
+        usedPreScreeningContext: auditFields.usedPreScreeningContext,
+        preScreeningIntents: auditFields.preScreeningIntents,
         inputTokens: result.inputTokens,
         outputTokens: result.outputTokens,
         totalTokens: result.totalTokens,
@@ -222,6 +233,7 @@ export const sendVirtualMarcoMessage = action({
               outputTokens: result.outputTokens,
               totalTokens: result.totalTokens,
               sources: bundle.knowledgeSources,
+              ...auditFields,
             },
           );
           return {
@@ -235,6 +247,8 @@ export const sendVirtualMarcoMessage = action({
             requiresVerification: result.output.requiresVerification,
             verificationTarget: result.output.verificationTarget,
             knowledgeCardsProvided: bundle.knowledgeSources.length,
+            usedPreScreeningContext: auditFields.usedPreScreeningContext,
+            preScreeningIntents: auditFields.preScreeningIntents,
             inputTokens: result.inputTokens,
             outputTokens: result.outputTokens,
             totalTokens: result.totalTokens,

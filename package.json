@@ -17,6 +17,7 @@
     "test:snapshot": "vitest run shared/comparison-snapshot",
     "test:knowledge": "vitest run shared/knowledge-engine",
     "test:assistant": "vitest run shared/assistant-context",
+    "test:diagnostics": "vitest run shared/alternative-diagnostics",
     "verify:financial": "tsx scripts/verify-financial-engine.ts"
   },
   "dependencies": {

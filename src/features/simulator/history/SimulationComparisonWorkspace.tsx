@@ -3,11 +3,11 @@ import { useAction, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { api } from "../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
+import { collectComparisonDurationOptions } from "../../../../shared/alternative-diagnostics";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingState } from "@/components/common/LoadingState";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
-import { generateDurationMonths } from "@/lib/constants/financial";
 import {
   createComparisonRequestId,
   useComparisonRun,
@@ -63,18 +63,48 @@ export function SimulationComparisonWorkspace({
 
   const durationOptions = useMemo(() => {
     if (!activeTables) return [];
-    const set = new Set<number>();
-    for (const table of activeTables) {
-      for (const duration of generateDurationMonths(
-        table.minimumDurationMonths,
-        table.maximumDurationMonths,
-        table.durationStepMonths,
-      )) {
-        set.add(duration);
-      }
-    }
-    return [...set].sort((a, b) => a - b);
-  }, [activeTables]);
+    return collectComparisonDurationOptions({
+      tables: activeTables.map((table) => ({
+        id: table._id,
+        companyId: table.companyId,
+        productId: table.productId,
+        network: table.network,
+        tableCode: table.tableCode,
+        displayName: table.displayName,
+        description: table.description,
+        category: table.category,
+        version: table.version,
+        minimumAmount: table.minimumAmount,
+        maximumAmount: table.maximumAmount,
+        minimumDurationMonths: table.minimumDurationMonths,
+        maximumDurationMonths: table.maximumDurationMonths,
+        durationStepMonths: table.durationStepMonths,
+        durationTerms: table.durationTerms,
+        customerTanPercent: table.customerTanPercent,
+        openingFeeType: table.openingFeeType,
+        openingFeeValue: table.openingFeeValue,
+        collectionFeePerInstallment: table.collectionFeePerInstallment,
+        installmentFeeType: table.installmentFeeType,
+        installmentFeeValue: table.installmentFeeValue,
+        internalCostPercentAt24Months: table.internalCostPercentAt24Months,
+        internalCostBase: table.internalCostBase,
+        firstInstallmentDelayDays: table.firstInstallmentDelayDays,
+        requiresManagerAuthorizationNotice:
+          table.requiresManagerAuthorizationNotice,
+        isActive: table.isActive,
+      })),
+      requestedAmount: simulation.requestedAmount ?? 0,
+      firstInstallmentDelayDays:
+        activeBundle?.run.selectedFirstInstallmentDelayDays ??
+        simulation.preferredFirstInstallmentDelayDays ??
+        30,
+    });
+  }, [
+    activeTables,
+    activeBundle?.run.selectedFirstInstallmentDelayDays,
+    simulation.preferredFirstInstallmentDelayDays,
+    simulation.requestedAmount,
+  ]);
 
   const openLatest = useCallback(() => {
     setViewMode("latest");

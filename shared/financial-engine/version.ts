@@ -1,1 +1,1 @@
-export const FINANCIAL_ENGINE_VERSION = "1.0.0";
+export const FINANCIAL_ENGINE_VERSION = "1.1.0";

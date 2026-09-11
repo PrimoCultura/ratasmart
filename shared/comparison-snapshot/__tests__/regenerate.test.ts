@@ -75,6 +75,35 @@ describe("regenerateAmortizationFromInputSnapshot", () => {
     expect(regenerated.warnings.length).toBeGreaterThan(0);
     expect(regenerated.amortizationSchedule.length).toBe(12);
   });
+
+  it("rigenera usando internalCostPercentApplied esatto (senza fallback 24 mesi)", () => {
+    const input = {
+      requestedAmount: 3000,
+      durationMonths: 12,
+      customerTanPercent: 0,
+      openingFeeType: "fixed" as const,
+      openingFeeValue: 100,
+      collectionFeePerInstallment: 1.5,
+      firstInstallmentDelayDays: 30,
+      internalCostPercentApplied: 4.44,
+    };
+
+    const original = calculateFinancialSolution(input);
+    expect(original.internalCostPercentApplied).toBeCloseTo(4.44, 5);
+    expect(original.internalCostPercentApplied).not.toBeCloseTo(2.22, 2);
+
+    const expectedSummary = mapCalculationSummary(original)!;
+    const regenerated = regenerateAmortizationFromInputSnapshot({
+      calculationInput: input,
+      expectedSummary,
+    });
+
+    expect(regenerated.summaryMatches).toBe(true);
+    expect(regenerated.calculation.internalCostPercentApplied).toBeCloseTo(
+      4.44,
+      5,
+    );
+  });
 });
 
 describe("stale engine version", () => {

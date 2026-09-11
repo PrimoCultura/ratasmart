@@ -5,11 +5,14 @@ import { isCurrentlyValid } from "./lib/authHelpers";
 import {
   buildAnonymizedSimulationContext,
   buildEntityCatalogFromActiveData,
-  buildPolicyAndTableContext,
+  buildPreScreeningContext,
+  detectPreScreeningIntents,
   formatHistoryForPrompt,
+  formatPreScreeningContext,
   mapSolutionSnapshotToSummary,
   matchEntitiesFromQuestion,
   selectHistoryForPrompt,
+  shouldAttachPreScreening,
 } from "../shared/assistant-context/index";
 import {
   formatKnowledgeContext,
@@ -19,6 +22,7 @@ import {
 
 /**
  * Bundle server-side per costruire il prompt Virtual Marco.
+ * Con o senza simulazione: include pre-screening da tabelle/policy attive.
  * Nessun identificativo paziente nel testo prodotto.
  */
 export const getVirtualMarcoTurnBundle = internalQuery({
@@ -37,7 +41,6 @@ export const getVirtualMarcoTurnBundle = internalQuery({
       throw new Error("Non sei autorizzato su questa conversazione.");
     }
     if (actor.role === "admin") {
-      // Admin non invia messaggi operativi via questa action CM.
       throw new Error("Solo il Clinic Manager proprietario può inviare messaggi.");
     }
 
@@ -104,6 +107,7 @@ export const getVirtualMarcoTurnBundle = internalQuery({
     });
 
     const matched = matchEntitiesFromQuestion(args.userQuestion, catalog);
+    const intents = detectPreScreeningIntents(args.userQuestion);
 
     let simulationContextText = "";
     let network: "PCG" | "DES" = matched.networks[0] ?? "PCG";
@@ -111,6 +115,7 @@ export const getVirtualMarcoTurnBundle = internalQuery({
     let productId = matched.productIds[0];
     let financialTableId = matched.tableIds[0];
     let resolvedComparisonRunId = conversation.comparisonRunId;
+    let hasSimulationContext = false;
 
     if (conversation.simulationId) {
       const simulation = await ctx.db.get(conversation.simulationId);
@@ -161,8 +166,8 @@ export const getVirtualMarcoTurnBundle = internalQuery({
             : null,
           privacyMode: conversation.privacyMode,
         });
+        hasSimulationContext = simulationContextText.length > 0;
 
-        // Scope knowledge dalle soluzioni del run
         const firstCompatible =
           solutions.find((item) => item.resultGroup === "compatible") ??
           solutions[0];
@@ -175,51 +180,98 @@ export const getVirtualMarcoTurnBundle = internalQuery({
       }
     }
 
+    const now = Date.now();
     const policySets = await ctx.db
       .query("policySets")
       .withIndex("by_is_active", (q) => q.eq("isActive", true))
       .collect();
     const policyRules = await ctx.db.query("policyRules").collect();
-    const rulesBySet = new Map<string, typeof policyRules>();
-    for (const rule of policyRules) {
-      const list = rulesBySet.get(rule.policySetId) ?? [];
-      list.push(rule);
-      rulesBySet.set(rule.policySetId, list);
-    }
 
-    const policyContext = conversation.simulationId
-      ? { text: "", warnings: [] as string[] }
-      : buildPolicyAndTableContext({
-          matched,
-          policies: policySets.map((set) => ({
+    const attachPreScreening = shouldAttachPreScreening({
+      hasSimulationContext,
+      intents,
+      matched,
+      userQuestion: args.userQuestion,
+    });
+
+    let preScreeningText = "";
+    let preScreeningWarnings: string[] = [];
+    let usedPreScreeningContext = false;
+
+    if (attachPreScreening) {
+      const preScreening = buildPreScreeningContext({
+        intents,
+        matched,
+        question: args.userQuestion,
+        maxCharacters: hasSimulationContext ? 8_000 : 14_000,
+        source: {
+          network,
+          calculationDate: now,
+          companies: companies.map((item) => ({
+            id: item._id,
+            name: item.name,
+            shortName: item.shortName,
+          })),
+          products: products.map((item) => ({
+            id: item._id,
+            companyId: item.companyId,
+            name: item.name,
+            code: item.code,
+            category: item.category,
+            isActive: item.isActive,
+          })),
+          tables: tables.map((item) => ({
+            id: item._id,
+            companyId: item.companyId,
+            productId: item.productId,
+            tableCode: item.tableCode,
+            displayName: item.displayName,
+            category: item.category,
+            network: item.network,
+            minimumAmount: item.minimumAmount,
+            maximumAmount: item.maximumAmount,
+            minimumDurationMonths: item.minimumDurationMonths,
+            maximumDurationMonths: item.maximumDurationMonths,
+            durationStepMonths: item.durationStepMonths,
+            durationTerms: item.durationTerms,
+            firstInstallmentDelayDays: item.firstInstallmentDelayDays,
+            customerTanPercent: item.customerTanPercent,
+            isActive: item.isActive,
+          })),
+          policySets: policySets.map((set) => ({
             id: set._id,
             name: set.name,
             network: set.network,
             companyId: set.companyId,
             productId: set.productId,
             financialTableId: set.financialTableId,
-            rules: (rulesBySet.get(set._id) ?? []).map((rule) => ({
-              ruleType: rule.ruleType,
-              message: rule.failureMessage,
-              summary: rule.failureMessage,
-            })),
+            isActive: set.isActive,
+            validFrom: set.validFrom,
+            validTo: set.validTo,
           })),
-          tables: tables.map((table) => ({
-            id: table._id,
-            tableCode: table.tableCode,
-            displayName: table.displayName,
-            network: table.network,
-            companyId: table.companyId,
-            productId: table.productId,
-            customerTanPercent: table.customerTanPercent,
-            minimumAmount: table.minimumAmount,
-            maximumAmount: table.maximumAmount,
-            minimumDurationMonths: table.minimumDurationMonths,
-            maximumDurationMonths: table.maximumDurationMonths,
+          policyRules: policyRules.map((rule) => ({
+            policySetId: rule.policySetId,
+            ruleType: rule.ruleType,
+            operator: rule.operator,
+            numericValue: rule.numericValue,
+            stringValue: rule.stringValue,
+            booleanValue: rule.booleanValue,
+            stringValues: rule.stringValues,
+            monthsBuffer: rule.monthsBuffer,
+            failureMessage: rule.failureMessage,
+            verificationMessage: rule.verificationMessage,
+            isActive: rule.isActive,
+            sortOrder: rule.sortOrder,
           })),
-        });
+        },
+      });
+      preScreeningText = formatPreScreeningContext(preScreening, {
+        question: args.userQuestion,
+      });
+      preScreeningWarnings = preScreening.warnings;
+      usedPreScreeningContext = preScreeningText.length > 0;
+    }
 
-    const now = Date.now();
     const cards = await ctx.db
       .query("knowledgeCards")
       .withIndex("by_is_active", (q) => q.eq("isActive", true))
@@ -246,15 +298,39 @@ export const getVirtualMarcoTurnBundle = internalQuery({
         validFrom: card.validFrom,
         validTo: card.validTo,
         version: card.version,
+        supersedesCardId: card.supersedesCardId,
       }));
+
+    // Preferisci tutte le finanziarie citate nella domanda (query multi-company).
+    const knowledgeCompanyIds =
+      matched.companyIds.length > 0
+        ? matched.companyIds
+        : companyId
+          ? [companyId]
+          : undefined;
+    const knowledgeProductIds =
+      matched.productIds.length > 0
+        ? matched.productIds
+        : productId
+          ? [productId]
+          : undefined;
+    const knowledgeTableIds =
+      matched.tableIds.length > 0
+        ? matched.tableIds
+        : financialTableId
+          ? [financialTableId]
+          : undefined;
 
     const knowledgeSelection = selectRelevantKnowledgeCards(
       runtimeCards,
       {
         network,
-        companyId,
-        productId,
-        financialTableId,
+        companyId: knowledgeCompanyIds?.[0],
+        companyIds: knowledgeCompanyIds,
+        productId: knowledgeProductIds?.[0],
+        productIds: knowledgeProductIds,
+        financialTableId: knowledgeTableIds?.[0],
+        financialTableIds: knowledgeTableIds,
         userQuestion: args.userQuestion,
         calculationDate: now,
         privacyMode: conversation.privacyMode,
@@ -264,7 +340,7 @@ export const getVirtualMarcoTurnBundle = internalQuery({
 
     const structuredParts = [
       simulationContextText,
-      policyContext.text,
+      preScreeningText,
     ].filter(Boolean);
 
     return {
@@ -296,11 +372,14 @@ export const getVirtualMarcoTurnBundle = internalQuery({
       }),
       contextWarnings: [
         ...historySelection.warnings,
-        ...policyContext.warnings,
+        ...preScreeningWarnings,
         ...knowledgeSelection.warnings,
       ],
       resolvedComparisonRunId,
       matched,
+      intents,
+      usedPreScreeningContext,
+      matchedCompanyIds: matched.companyIds,
     };
   },
 });

@@ -39,3 +39,27 @@ export {
   selectHistoryForPrompt,
 } from "./history.ts";
 export { buildVirtualMarcoPrompt } from "./prompt-builder.ts";
+
+export {
+  detectPreScreeningIntents,
+  PRE_SCREENING_INTENTS,
+  type PreScreeningIntent,
+} from "./intents.ts";
+export {
+  assertPreScreeningPrivacy,
+  buildPreScreeningContext,
+  formatPreScreeningContext,
+  isProceduralKnowledgeQuestion,
+  shouldAttachPreScreening,
+  type PreScreeningContext,
+  type PreScreeningPolicyRule,
+  type PreScreeningSourceData,
+  type PreScreeningTable,
+} from "./pre-screening-context.ts";
+export {
+  buildPreScreeningOrientation,
+  extractPreScreeningSignals,
+  resolveCompanyPreScreeningStatuses,
+  type CompanyPreScreeningStatus,
+  type PreScreeningQuestionSignals,
+} from "./pre-screening-guidance.ts";
