@@ -117,13 +117,17 @@ function select(
 }
 
 describe("KB ufficiale PCG 2026", () => {
-  it("espone 17 card ufficiali attive con network PCG", () => {
-    expect(PCG_KNOWLEDGE_CARDS_2026).toHaveLength(17);
+  it("espone le card ufficiali PCG (core + FAQ supplementari)", () => {
+    expect(PCG_KNOWLEDGE_CARDS_2026.length).toBeGreaterThanOrEqual(40);
     expect(
       PCG_KNOWLEDGE_CARDS_2026.every(
         (card) => card.network === "PCG" && card.visibility === "internal_only",
       ),
     ).toBe(true);
+    const keys = PCG_KNOWLEDGE_CARDS_2026.map((card) => card.seedKey);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys).toContain("agos-data-addebito-rata");
+    expect(keys).toContain("faq-eta-minima");
   });
 
   it("non recupera card DEMO TECNICA disattivate", () => {

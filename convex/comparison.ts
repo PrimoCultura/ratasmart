@@ -17,6 +17,12 @@ import {
   buildComparisonDiagnostics,
 } from "../shared/alternative-diagnostics/index";
 import {
+  analyzeZeroInterestAlternative,
+  ZERO_INTEREST_ALTERNATIVE_VERSION,
+  type ZeroInterestAlternativeAnalysis,
+} from "../shared/zero-interest-alternative/index";
+import type { RuntimeFinancialTable } from "../shared/policy-engine/comparison";
+import {
   regenerateAmortizationFromInputSnapshot,
   stripUndefinedDeep,
 } from "./lib/comparisonSnapshotMapper";
@@ -40,6 +46,7 @@ export type CalculateSimulationComparisonResult = SimulationComparisonResult & {
   isHistorical: false;
   wasDuplicateRequest: boolean;
   diagnostics?: ReturnType<typeof buildComparisonDiagnostics>;
+  zeroInterestAlternative?: ZeroInterestAlternativeAnalysis;
 };
 
 /**
@@ -110,6 +117,9 @@ export const calculateSimulationComparison = action({
         hasGuarantor: simulation.hasGuarantor,
       };
 
+      const patientRequestsZeroInterest =
+        simulation.patientRequestsZeroInterest === true;
+
       const result = buildComparisonResult({
         simulationId: simulation._id,
         network: simulation.network,
@@ -176,6 +186,19 @@ export const calculateSimulationComparison = action({
         rulesByTableId: bundle.rulesByTableId,
       });
 
+      const tablesById: Record<string, RuntimeFinancialTable> = {};
+      for (const table of bundle.tables as RuntimeFinancialTable[]) {
+        tablesById[table.id] = table;
+      }
+
+      const zeroInterestAlternative = analyzeZeroInterestAlternative({
+        enabled: patientRequestsZeroInterest,
+        requestedAmount: simulation.requestedAmount,
+        referenceDate: calculationDate,
+        compatibleSolutions: result.compatibleSolutions,
+        tablesById,
+      });
+
       const persisted = await ctx.runMutation(
         internal.comparisonPersistence.persistComparisonRun,
         {
@@ -199,6 +222,7 @@ export const calculateSimulationComparison = action({
             employmentSeniorityMonths,
             seniorityReferenceDate: calculationDate,
             hasGuarantor: simulation.hasGuarantor,
+            patientRequestsZeroInterest,
           }),
           result,
           messagesById,
@@ -264,6 +288,12 @@ export const calculateSimulationComparison = action({
           ),
           diagnosticsSnapshot: diagnostics,
           alternativeDiagnosticsVersion: ALTERNATIVE_DIAGNOSTICS_VERSION,
+          zeroInterestAlternativeSnapshot: patientRequestsZeroInterest
+            ? zeroInterestAlternative
+            : undefined,
+          zeroInterestAlternativeVersion: patientRequestsZeroInterest
+            ? ZERO_INTEREST_ALTERNATIVE_VERSION
+            : undefined,
         },
       );
 
@@ -284,6 +314,9 @@ export const calculateSimulationComparison = action({
         isHistorical: false,
         wasDuplicateRequest: persisted.wasDuplicate,
         diagnostics,
+        zeroInterestAlternative: patientRequestsZeroInterest
+          ? zeroInterestAlternative
+          : undefined,
       };
     } catch (error) {
       const message =

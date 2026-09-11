@@ -79,6 +79,7 @@ export const patientSimulationSchema = z
       .gte(0)
       .optional(),
     hasGuarantor: z.boolean().optional(),
+    patientRequestsZeroInterest: z.boolean().optional().default(false),
     requestedAmount: z
       .number({
         required_error: "L'importo richiesto è obbligatorio",

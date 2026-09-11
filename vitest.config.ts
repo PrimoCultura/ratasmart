@@ -18,6 +18,8 @@ export default defineConfig({
       "shared/knowledge-engine/**/*.test.ts",
       "shared/assistant-context/**/*.test.ts",
       "shared/alternative-diagnostics/**/*.test.ts",
+      "shared/documentation-requirements/**/*.test.ts",
+      "shared/zero-interest-alternative/**/*.test.ts",
     ],
     environment: "node",
   },

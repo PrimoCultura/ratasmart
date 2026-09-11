@@ -55,6 +55,7 @@ export const persistComparisonRun = internalMutation({
       employmentSeniorityMonths: v.optional(v.number()),
       seniorityReferenceDate: v.optional(v.number()),
       hasGuarantor: v.optional(v.boolean()),
+      patientRequestsZeroInterest: v.optional(v.boolean()),
     }),
     result: v.any(),
     messagesById: v.any(),
@@ -62,6 +63,8 @@ export const persistComparisonRun = internalMutation({
     products: v.array(v.any()),
     diagnosticsSnapshot: v.optional(v.any()),
     alternativeDiagnosticsVersion: v.optional(v.string()),
+    zeroInterestAlternativeSnapshot: v.optional(v.any()),
+    zeroInterestAlternativeVersion: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -155,6 +158,8 @@ export const persistComparisonRun = internalMutation({
       ...stripUndefinedDeep(runFields),
       diagnosticsSnapshot: args.diagnosticsSnapshot,
       alternativeDiagnosticsVersion: args.alternativeDiagnosticsVersion,
+      zeroInterestAlternativeSnapshot: args.zeroInterestAlternativeSnapshot,
+      zeroInterestAlternativeVersion: args.zeroInterestAlternativeVersion,
     });
 
     const runtimeToPersistentIds: Record<

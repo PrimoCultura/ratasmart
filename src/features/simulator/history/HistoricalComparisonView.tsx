@@ -29,11 +29,14 @@ import { ComparisonDiagnosticsCard } from "./ComparisonDiagnosticsCard";
 import { DocumentationRequirementsCard } from "./DocumentationRequirementsCard";
 import { ProposedSolutionBadge } from "./ProposedSolutionBadge";
 import { evaluateIncomeDocumentRequirements } from "../../../../shared/documentation-requirements";
+import type { ZeroInterestAlternativeAnalysis } from "../../../../shared/zero-interest-alternative";
+import { ZeroInterestAlternativeCard } from "./ZeroInterestAlternativeCard";
 
 type ComparisonBundle = {
   run: Doc<"simulationComparisonRuns"> & {
     isLatest: boolean;
     isHistorical: boolean;
+    zeroInterestAlternativeSnapshot?: ZeroInterestAlternativeAnalysis;
   };
   solutions: Doc<"simulationComparisonSolutions">[];
   proposedSolutionId?: Id<"simulationComparisonSolutions">;
@@ -145,6 +148,17 @@ export function HistoricalComparisonView({
       isNonEuCitizen: bundle.run.patientSnapshot.isNonEuCitizen,
     });
   }, [bundle, diagnostics]);
+
+  const zeroInterestAlternative = useMemo(() => {
+    if (!bundle) return null;
+    const snapshot = (
+      bundle.run as Doc<"simulationComparisonRuns"> & {
+        zeroInterestAlternativeSnapshot?: ZeroInterestAlternativeAnalysis;
+      }
+    ).zeroInterestAlternativeSnapshot;
+    if (!snapshot?.enabled) return null;
+    return snapshot;
+  }, [bundle]);
 
   if (bundle === undefined) {
     return <LoadingState label="Caricamento confronto…" />;
@@ -372,6 +386,10 @@ export function HistoricalComparisonView({
             />
           ) : null}
         </section>
+
+        {zeroInterestAlternative ? (
+          <ZeroInterestAlternativeCard analysis={zeroInterestAlternative} />
+        ) : null}
 
         {verification.length > 0 ? (
           <ComparisonSection

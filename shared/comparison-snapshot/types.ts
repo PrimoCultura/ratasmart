@@ -52,6 +52,7 @@ export type PatientSnapshot = {
   /** Data di riferimento usata per calcolare l'anzianità (ms). */
   seniorityReferenceDate?: number;
   hasGuarantor?: boolean;
+  patientRequestsZeroInterest?: boolean;
 };
 
 export type CompanySnapshot = {

@@ -19,6 +19,7 @@
     "test:assistant": "vitest run shared/assistant-context",
     "test:diagnostics": "vitest run shared/alternative-diagnostics",
     "test:documentation": "vitest run shared/documentation-requirements",
+    "test:zero-alternative": "vitest run shared/zero-interest-alternative",
     "verify:financial": "tsx scripts/verify-financial-engine.ts"
   },
   "dependencies": {

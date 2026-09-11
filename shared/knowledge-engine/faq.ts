@@ -1,6 +1,18 @@
 import { filterCurrentKnowledgeVersions } from "./scoring.ts";
 import type { RuntimeKnowledgeCard } from "./types.ts";
 
+export const FAQ_CATEGORY_ORDER = [
+  "Requisiti paziente",
+  "Documenti",
+  "Garanti",
+  "Agos",
+  "Compass",
+  "Deutsche Bank",
+  "Rate e scadenze",
+  "Pagamenti e fatturazione",
+  "Tasso zero e autorizzazioni",
+] as const;
+
 export type FaqEntry = {
   id: string;
   question: string;
@@ -25,6 +37,22 @@ export function isFaqEligibleCard(card: FaqKnowledgeCard): boolean {
   return card.isActive === true && card.showInFaq === true;
 }
 
+function categoryRank(category: string): number {
+  const index = FAQ_CATEGORY_ORDER.indexOf(
+    category as (typeof FAQ_CATEGORY_ORDER)[number],
+  );
+  return index === -1 ? FAQ_CATEGORY_ORDER.length + 1 : index;
+}
+
+export function listFaqCategories(entries: FaqEntry[]): string[] {
+  const present = new Set(entries.map((entry) => entry.category));
+  const ordered = FAQ_CATEGORY_ORDER.filter((category) => present.has(category));
+  const extras = [...present]
+    .filter((category) => !FAQ_CATEGORY_ORDER.includes(category as (typeof FAQ_CATEGORY_ORDER)[number]))
+    .sort((a, b) => a.localeCompare(b, "it"));
+  return [...ordered, ...extras];
+}
+
 export function buildFaqEntries(cards: FaqKnowledgeCard[]): FaqEntry[] {
   const current = filterCurrentKnowledgeVersions(cards) as FaqKnowledgeCard[];
   return current
@@ -41,8 +69,8 @@ export function buildFaqEntries(cards: FaqKnowledgeCard[]): FaqEntry[] {
     }))
     .sort(
       (a, b) =>
+        categoryRank(a.category) - categoryRank(b.category) ||
         a.order - b.order ||
-        a.category.localeCompare(b.category, "it") ||
         a.question.localeCompare(b.question, "it"),
     );
 }
@@ -65,4 +93,12 @@ export function searchFaqEntries(
       .toLowerCase();
     return haystack.includes(needle);
   });
+}
+
+export function filterFaqByCategory(
+  entries: FaqEntry[],
+  category: string | "all",
+): FaqEntry[] {
+  if (category === "all") return entries;
+  return entries.filter((entry) => entry.category === category);
 }

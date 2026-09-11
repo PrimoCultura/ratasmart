@@ -50,6 +50,7 @@ type FormValues = {
   temporaryContractExpiry: string;
   isNonEuCitizen: "yes" | "no";
   residencePermitExpiry: string;
+  patientRequestsZeroInterest: boolean;
   requestedAmount: string;
   targetInstallment: string;
   requestedDurationMonths: string;
@@ -109,6 +110,7 @@ export function SimulationDetailPage() {
       temporaryContractExpiry: "",
       isNonEuCitizen: "no",
       residencePermitExpiry: "",
+      patientRequestsZeroInterest: false,
       requestedAmount: "",
       targetInstallment: "",
       requestedDurationMonths: "",
@@ -130,6 +132,8 @@ export function SimulationDetailPage() {
       temporaryContractExpiry: toDateInput(simulation.temporaryContractExpiry),
       isNonEuCitizen: simulation.isNonEuCitizen ? "yes" : "no",
       residencePermitExpiry: toDateInput(simulation.residencePermitExpiry),
+      patientRequestsZeroInterest:
+        simulation.patientRequestsZeroInterest === true,
       requestedAmount: formatAmountInput(simulation.requestedAmount),
       targetInstallment: formatAmountInput(simulation.targetInstallment),
       requestedDurationMonths:
@@ -169,6 +173,7 @@ export function SimulationDetailPage() {
       temporaryContractExpiry: parseDateInput(values.temporaryContractExpiry),
       isNonEuCitizen: values.isNonEuCitizen === "yes",
       residencePermitExpiry: parseDateInput(values.residencePermitExpiry),
+      patientRequestsZeroInterest: values.patientRequestsZeroInterest,
       requestedAmount: parseItalianAmount(values.requestedAmount),
       targetInstallment: values.targetInstallment.trim()
         ? parseItalianAmount(values.targetInstallment)
@@ -352,6 +357,20 @@ export function SimulationDetailPage() {
                 <Label>Importo richiesto (€)</Label>
                 <Input {...form.register("requestedAmount")} />
               </div>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={form.watch("patientRequestsZeroInterest")}
+                  onChange={(e) =>
+                    form.setValue(
+                      "patientRequestsZeroInterest",
+                      e.target.checked,
+                    )
+                  }
+                />
+                <span>Il paziente richiede espressamente il tasso zero</span>
+              </label>
               <div className="space-y-2">
                 <Label>Rata obiettivo (€)</Label>
                 <Input {...form.register("targetInstallment")} />

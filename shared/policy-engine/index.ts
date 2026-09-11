@@ -33,6 +33,9 @@ export {
   resolveEmploymentSeniorityMonths,
 } from "./employment-seniority.ts";
 
+export { PCG_2026_POLICY_CONSTANTS } from "./pcg-2026-constants.ts";
+export type { Pcg2026PolicyConstants } from "./pcg-2026-constants.ts";
+
 export { evaluatePolicyRule } from "./rule-evaluators.ts";
 export type { RuleEvaluationContext } from "./rule-evaluators.ts";
 

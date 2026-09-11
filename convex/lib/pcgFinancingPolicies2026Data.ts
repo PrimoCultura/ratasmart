@@ -1,4 +1,5 @@
 import type { PolicyOperator, PolicyRuleType } from "../../shared/policy-engine/types";
+import { PCG_2026_POLICY_CONSTANTS as C } from "../../shared/policy-engine/pcg-2026-constants";
 
 export type PcgPolicyRuleSeed = {
   ruleType: PolicyRuleType;
@@ -26,7 +27,7 @@ export type PcgPolicySetSeed = {
 const SHARED_MINIMUM_AGE: PcgPolicyRuleSeed = {
   ruleType: "minimum_age",
   operator: "greater_than_or_equal",
-  numericValue: 18,
+  numericValue: C.minimumAge,
   failureMessage:
     "Il finanziamento può essere intestato solo a una persona maggiorenne.",
   sortOrder: 10,
@@ -57,7 +58,7 @@ const SHARED_RESIDENCE_PERMIT: PcgPolicyRuleSeed = {
 const SHARED_SENIORITY: PcgPolicyRuleSeed = {
   ruleType: "minimum_employment_seniority_months",
   operator: "greater_than_or_equal",
-  numericValue: 12,
+  numericValue: C.seniorityMonths,
   failureMessage:
     "L’anzianità lavorativa indicata è inferiore ai 12 mesi previsti dalle indicazioni operative: verificare con la finanziaria.",
   verificationMessage:
@@ -81,7 +82,7 @@ export const PCG_FINANCING_POLICY_SETS_2026: PcgPolicySetSeed[] = [
       {
         ruleType: "maximum_age_at_end",
         operator: "less_than_or_equal",
-        numericValue: 82,
+        numericValue: C.agosMaxAgeAtEnd,
         failureMessage:
           "Agos richiede che il piano termini entro il compimento degli 82 anni.",
         sortOrder: 50,
@@ -127,7 +128,7 @@ export const PCG_FINANCING_POLICY_SETS_2026: PcgPolicySetSeed[] = [
       {
         ruleType: "maximum_age_at_application",
         operator: "less_than",
-        numericValue: 75,
+        numericValue: C.compassMaxAgeAtApplicationExclusive,
         failureMessage:
           "Compass richiede un’età inferiore a 75 anni al momento della richiesta.",
         sortOrder: 50,
@@ -135,7 +136,7 @@ export const PCG_FINANCING_POLICY_SETS_2026: PcgPolicySetSeed[] = [
       {
         ruleType: "maximum_age_at_end",
         operator: "less_than_or_equal",
-        numericValue: 80,
+        numericValue: C.compassMaxAgeAtEnd,
         failureMessage:
           "Compass richiede che il piano termini entro il compimento degli 80 anni.",
         sortOrder: 55,
@@ -143,7 +144,7 @@ export const PCG_FINANCING_POLICY_SETS_2026: PcgPolicySetSeed[] = [
       {
         ruleType: "maximum_amount_for_employment_types",
         operator: "less_than_or_equal",
-        numericValue: 2500,
+        numericValue: C.studentHousewifeMaxAmountEur,
         stringValues: ["student", "housewife"],
         failureMessage:
           "Per studente/casalinga Compass ammette un importo massimo di 2.500 € sul profilo dichiarato.",
@@ -194,7 +195,7 @@ export const PCG_FINANCING_POLICY_SETS_2026: PcgPolicySetSeed[] = [
       {
         ruleType: "maximum_age_at_application",
         operator: "less_than",
-        numericValue: 79,
+        numericValue: C.deutscheBankMaxAgeAtApplicationExclusive,
         failureMessage:
           "Deutsche Bank (prodotti standard attualmente caricati) richiede un’età inferiore a 79 anni al momento della richiesta.",
         sortOrder: 50,
@@ -202,7 +203,7 @@ export const PCG_FINANCING_POLICY_SETS_2026: PcgPolicySetSeed[] = [
       {
         ruleType: "maximum_age_at_end",
         operator: "less_than_or_equal",
-        numericValue: 80,
+        numericValue: C.deutscheBankMaxAgeAtEnd,
         failureMessage:
           "Deutsche Bank richiede che il piano termini entro il compimento degli 80 anni.",
         sortOrder: 55,
@@ -210,7 +211,7 @@ export const PCG_FINANCING_POLICY_SETS_2026: PcgPolicySetSeed[] = [
       {
         ruleType: "maximum_amount_for_employment_types",
         operator: "less_than_or_equal",
-        numericValue: 2500,
+        numericValue: C.studentHousewifeMaxAmountEur,
         stringValues: ["student", "housewife"],
         failureMessage:
           "Per studente/casalinga Deutsche Bank ammette un importo massimo di 2.500 € sul profilo dichiarato.",

@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   buildFaqEntries,
+  filterFaqByCategory,
+  listFaqCategories,
   searchFaqEntries,
 } from "../../../shared/knowledge-engine/faq";
 
@@ -44,16 +46,11 @@ export function FaqPage() {
     );
   }, [cards]);
 
-  const categories = useMemo(() => {
-    return [...new Set(entries.map((entry) => entry.category))].sort((a, b) =>
-      a.localeCompare(b, "it"),
-    );
-  }, [entries]);
+  const categories = useMemo(() => listFaqCategories(entries), [entries]);
 
   const filtered = useMemo(() => {
     const searched = searchFaqEntries(entries, query);
-    if (category === "all") return searched;
-    return searched.filter((entry) => entry.category === category);
+    return filterFaqByCategory(searched, category);
   }, [entries, query, category]);
 
   if (cards === undefined) {
@@ -81,19 +78,23 @@ export function FaqPage() {
             variant={category === "all" ? "default" : "outline"}
             onClick={() => setCategory("all")}
           >
-            Tutte
+            Tutte ({entries.length})
           </Button>
-          {categories.map((item) => (
-            <Button
-              key={item}
-              type="button"
-              size="sm"
-              variant={category === item ? "default" : "outline"}
-              onClick={() => setCategory(item)}
-            >
-              {item}
-            </Button>
-          ))}
+          {categories.map((item) => {
+            const count = entries.filter((entry) => entry.category === item)
+              .length;
+            return (
+              <Button
+                key={item}
+                type="button"
+                size="sm"
+                variant={category === item ? "default" : "outline"}
+                onClick={() => setCategory(item)}
+              >
+                {item} ({count})
+              </Button>
+            );
+          })}
         </div>
       </div>
 

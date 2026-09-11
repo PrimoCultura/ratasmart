@@ -49,6 +49,7 @@ type FormValues = {
   hasResidencePermitRenewalReceiptOnly: boolean;
   employmentStartDate: string;
   hasGuarantor: "yes" | "no" | "";
+  patientRequestsZeroInterest: boolean;
   requestedAmount: string;
   targetInstallment: string;
   requestedDurationMonths: string;
@@ -86,6 +87,7 @@ export function SimulatorPage() {
       hasResidencePermitRenewalReceiptOnly: false,
       employmentStartDate: "",
       hasGuarantor: "",
+      patientRequestsZeroInterest: false,
       requestedAmount: "",
       targetInstallment: "",
       requestedDurationMonths: "",
@@ -157,6 +159,7 @@ export function SimulatorPage() {
           : values.hasGuarantor === "no"
             ? false
             : undefined,
+      patientRequestsZeroInterest: values.patientRequestsZeroInterest,
       requestedAmount,
       targetInstallment,
       requestedDurationMonths,
@@ -369,6 +372,17 @@ export function SimulatorPage() {
                 {...form.register("requestedAmount")}
               />
             </div>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={form.watch("patientRequestsZeroInterest")}
+                onChange={(e) =>
+                  form.setValue("patientRequestsZeroInterest", e.target.checked)
+                }
+              />
+              <span>Il paziente richiede espressamente il tasso zero</span>
+            </label>
             <div className="space-y-2">
               <Label htmlFor="targetInstallment">
                 Rata obiettivo (€) — facoltativa

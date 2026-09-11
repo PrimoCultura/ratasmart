@@ -3,6 +3,8 @@
  * Non duplicare TAN/durate/importi delle tabelle o regole del policy-engine.
  */
 
+import { PCG_OFFICIAL_FAQ_SUPPLEMENT_CARDS_2026 } from "./pcgOfficialFaqCards2026.ts";
+
 export type KnowledgeCardSeedCategory =
   | "documents"
   | "liquidation"
@@ -45,7 +47,7 @@ export type OfficialKnowledgeCardSeed = {
 
 export const PCG_KB_SOURCE_REFERENCE = "PCG KB ufficiale 2026";
 
-export const PCG_KNOWLEDGE_CARDS_2026: OfficialKnowledgeCardSeed[] = [
+const PCG_KNOWLEDGE_CARDS_2026_CORE: OfficialKnowledgeCardSeed[] = [
   {
     seedKey: "agos-data-addebito-rata",
     title: "Agos – data di addebito rata",
@@ -92,7 +94,7 @@ Fornire la spiegazione estesa solo se richiesta o utile al caso.`,
     showInFaq: true,
     faqQuestion: "Con Agos posso modificare la data di addebito rata?",
     faqCategory: "Rate e scadenze",
-    faqOrder: 10,
+    faqOrder: 700,
   },
   {
     seedKey: "db-modifica-data-rata",
@@ -119,6 +121,10 @@ La possibilità di modifica non deve essere interpretata come automatica: in cas
     priority: 80,
     visibility: "internal_only",
     sourceReference: PCG_KB_SOURCE_REFERENCE,
+    showInFaq: true,
+    faqQuestion: "Posso modificare la data di addebito con Deutsche Bank?",
+    faqCategory: "Deutsche Bank",
+    faqOrder: 630,
   },
   {
     seedKey: "agos-liquidazione-fattura-48h",
@@ -157,7 +163,7 @@ In caso di dubbio verificare sempre se la fattura sia già stata trasmessa autom
     showInFaq: true,
     faqQuestion: "Quando devo caricare la fattura Agos?",
     faqCategory: "Agos",
-    faqOrder: 20,
+    faqOrder: 420,
   },
   {
     seedKey: "agos-pass-liquidazione",
@@ -178,7 +184,7 @@ Non confondere questa procedura con quella prevista per i finanziamenti Agos cla
     showInFaq: true,
     faqQuestion: "Come funziona la liquidazione Agos Pass?",
     faqCategory: "Agos",
-    faqOrder: 25,
+    faqOrder: 440,
   },
   {
     seedKey: "compass-liquidazione",
@@ -214,7 +220,7 @@ Non inventare indirizzi e-mail o documenti specifici se non presenti nella Knowl
     showInFaq: true,
     faqQuestion: "Come richiedo la liquidazione Compass?",
     faqCategory: "Compass",
-    faqOrder: 30,
+    faqOrder: 510,
   },
   {
     seedKey: "db-liquidazione",
@@ -251,7 +257,7 @@ Non inventare indirizzi e-mail o documenti specifici.`,
     showInFaq: true,
     faqQuestion: "Come richiedo la liquidazione Deutsche Bank?",
     faqCategory: "Deutsche Bank",
-    faqOrder: 35,
+    faqOrder: 610,
   },
   {
     seedKey: "fatturazione-finanziamenti",
@@ -314,6 +320,10 @@ La presenza di un garante non garantisce l’approvazione della pratica.`,
     priority: 95,
     visibility: "internal_only",
     sourceReference: PCG_KB_SOURCE_REFERENCE,
+    showInFaq: true,
+    faqQuestion: "Chi può fare da garante?",
+    faqCategory: "Garanti",
+    faqOrder: 300,
   },
   {
     seedKey: "garante-piu-anziano",
@@ -343,6 +353,10 @@ Non presumere che l’età dell’intestatario sia l’unico riferimento della p
     priority: 80,
     visibility: "internal_only",
     sourceReference: PCG_KB_SOURCE_REFERENCE,
+    showInFaq: true,
+    faqQuestion: "Il garante può essere più anziano del richiedente?",
+    faqCategory: "Garanti",
+    faqOrder: 330,
   },
   {
     seedKey: "pensione-invalidita",
@@ -380,6 +394,10 @@ Non dichiarare mai automaticamente finanziabile una pratica sulla sola base di q
     alertLabel: "Pensione di invalidità",
     visibility: "internal_only",
     sourceReference: PCG_KB_SOURCE_REFERENCE,
+    showInFaq: true,
+    faqQuestion: "Come viene gestita una pensione di invalidità?",
+    faqCategory: "Garanti",
+    faqOrder: 360,
   },
   {
     seedKey: "esenzione-documento-reddito",
@@ -413,14 +431,15 @@ La finanziaria può richiedere comunque la documentazione reddituale anche quand
       "5.000",
       "straniero",
       "italiano",
+      "extracomunitario",
     ],
     priority: 90,
     visibility: "internal_only",
     sourceReference: PCG_KB_SOURCE_REFERENCE,
     showInFaq: true,
-    faqQuestion: "Quando è prevista l’esenzione dal documento di reddito?",
+    faqQuestion: "Fino a quale importo può essere prevista l’esenzione dal documento di reddito?",
     faqCategory: "Documenti",
-    faqOrder: 40,
+    faqOrder: 210,
   },
   {
     seedKey: "studenti-casalinghe-documentazione",
@@ -453,7 +472,7 @@ Non usare questa scheda per determinare autonomamente la compatibilità.`,
     showInFaq: true,
     faqQuestion: "Quali documenti servono per studente o casalinga?",
     faqCategory: "Documenti",
-    faqOrder: 45,
+    faqOrder: 240,
   },
   {
     seedKey: "ampliamento-finanziamento",
@@ -550,6 +569,10 @@ In caso di necessità verificare direttamente con il referente Agos.`,
     alertLabel: "Agos – respinte dopo le 17",
     visibility: "internal_only",
     sourceReference: PCG_KB_SOURCE_REFERENCE,
+    showInFaq: true,
+    faqQuestion: "Cosa succede a una pratica Agos respinta inserita dopo le 17?",
+    faqCategory: "Agos",
+    faqOrder: 450,
   },
   {
     seedKey: "tasso-zero-agevolato-sinergia",
@@ -614,8 +637,13 @@ Non eseguire autonomamente nuovi calcoli reddituali se RataSmart non fornisce gi
     visibility: "internal_only",
     sourceReference: PCG_KB_SOURCE_REFERENCE,
     showInFaq: true,
-    faqQuestion: "Posso utilizzare un garante?",
+    faqQuestion: "Quando è opportuno valutare un garante?",
     faqCategory: "Garanti",
-    faqOrder: 50,
+    faqOrder: 350,
   },
+];
+
+export const PCG_KNOWLEDGE_CARDS_2026: OfficialKnowledgeCardSeed[] = [
+  ...PCG_KNOWLEDGE_CARDS_2026_CORE,
+  ...PCG_OFFICIAL_FAQ_SUPPLEMENT_CARDS_2026,
 ];

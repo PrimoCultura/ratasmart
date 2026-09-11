@@ -188,6 +188,7 @@ export const createDraftSimulation = mutation({
     employmentStartDate: v.optional(v.string()),
     employmentSeniorityMonths: v.optional(v.number()),
     hasGuarantor: v.optional(v.boolean()),
+    patientRequestsZeroInterest: v.optional(v.boolean()),
     requestedDurationMonths: v.optional(v.number()),
     preferredFirstInstallmentDelayDays: v.optional(delayDaysValidator),
   },
@@ -235,6 +236,7 @@ export const createDraftSimulation = mutation({
       employmentStartDate: args.employmentStartDate,
       employmentSeniorityMonths: args.employmentSeniorityMonths,
       hasGuarantor: args.hasGuarantor,
+      patientRequestsZeroInterest: args.patientRequestsZeroInterest === true,
       requestedDurationMonths: args.requestedDurationMonths,
       preferredFirstInstallmentDelayDays:
         args.preferredFirstInstallmentDelayDays,
@@ -263,6 +265,7 @@ export const updateSimulationPatientData = mutation({
     employmentStartDate: v.optional(v.string()),
     employmentSeniorityMonths: v.optional(v.number()),
     hasGuarantor: v.optional(v.boolean()),
+    patientRequestsZeroInterest: v.optional(v.boolean()),
     requestedDurationMonths: v.optional(v.number()),
     preferredFirstInstallmentDelayDays: v.optional(delayDaysValidator),
   },
@@ -305,6 +308,7 @@ export const updateSimulationPatientData = mutation({
         ? args.employmentSeniorityMonths
         : undefined,
       hasGuarantor: args.hasGuarantor,
+      patientRequestsZeroInterest: args.patientRequestsZeroInterest === true,
       requestedDurationMonths: args.requestedDurationMonths,
       preferredFirstInstallmentDelayDays:
         args.preferredFirstInstallmentDelayDays,

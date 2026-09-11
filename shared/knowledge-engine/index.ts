@@ -49,7 +49,10 @@ export type { OfficialKnowledgeCardSeed } from "./officialPcgCards2026.ts";
 
 export {
   buildFaqEntries,
+  filterFaqByCategory,
   isFaqEligibleCard,
+  listFaqCategories,
   searchFaqEntries,
+  FAQ_CATEGORY_ORDER,
 } from "./faq.ts";
-export type { FaqEntry, FaqCardFields } from "./faq.ts";
+export type { FaqEntry, FaqCardFields, FaqKnowledgeCard } from "./faq.ts";

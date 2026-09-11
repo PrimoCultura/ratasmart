@@ -186,6 +186,7 @@ export default defineSchema({
     employmentStartDate: v.optional(v.string()),
     employmentSeniorityMonths: v.optional(v.number()),
     hasGuarantor: v.optional(v.boolean()),
+    patientRequestsZeroInterest: v.optional(v.boolean()),
     requestedDurationMonths: v.optional(v.number()),
     preferredFirstInstallmentDelayDays: v.optional(v.number()),
     lastComparisonAt: v.optional(v.number()),
@@ -227,6 +228,7 @@ export default defineSchema({
       employmentSeniorityMonths: v.optional(v.number()),
       seniorityReferenceDate: v.optional(v.number()),
       hasGuarantor: v.optional(v.boolean()),
+      patientRequestsZeroInterest: v.optional(v.boolean()),
     }),
     compatibleSolutionsCount: v.number(),
     verificationRequiredSolutionsCount: v.number(),
@@ -244,6 +246,12 @@ export default defineSchema({
      */
     diagnosticsSnapshot: v.optional(v.any()),
     alternativeDiagnosticsVersion: v.optional(v.string()),
+    /**
+     * Analisi tasso zero vs sconto equivalente (solo se richiesta).
+     * Assenza = run senza analisi o flag disattivo.
+     */
+    zeroInterestAlternativeSnapshot: v.optional(v.any()),
+    zeroInterestAlternativeVersion: v.optional(v.string()),
   })
     .index("by_simulation", ["simulationId"])
     .index("by_simulation_created_at", ["simulationId", "createdAt"])
