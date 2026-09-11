@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -85,6 +85,7 @@ export function SimulationDetailPage() {
   const { simulationId } = useParams<{ simulationId: string }>();
   const { userId } = useCurrentUser();
   const [editing, setEditing] = useState(false);
+  const [showPatientDetails, setShowPatientDetails] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const savePatientData = useMutation(
     api.simulations.updateSimulationPatientData,
@@ -161,6 +162,9 @@ export function SimulationDetailPage() {
 
   const employmentType = form.watch("employmentType");
   const isNonEuCitizen = form.watch("isNonEuCitizen");
+  const employmentLabel = simulation.employmentType
+    ? EMPLOYMENT_TYPE_LABELS[simulation.employmentType]
+    : "—";
 
   const onSave = form.handleSubmit(async (values) => {
     if (!userId) return;
@@ -210,62 +214,80 @@ export function SimulationDetailPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <PageHeader
         title={`${simulation.patientFirstName} ${simulation.patientLastName}`}
-        description="Dettaglio simulazione, confronti salvati e soluzione proposta."
+        description="Dettaglio simulazione e confronti."
         actions={
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" size="sm">
             <Link to="/app/history">Torna alla cronologia</Link>
           </Button>
         }
       />
 
-      <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <CardTitle>Dati simulazione</CardTitle>
-            <StatusBadge status={simulation.status} />
-            <ComparisonStatusBadge
-              comparisonStatus={simulation.comparisonStatus}
-              simulationStatus={simulation.status}
-            />
-            {simulation.selectedSolutionLabel ? (
-              <>
-                <ProposedSolutionBadge />
-                <Badge variant="outline">{simulation.selectedSolutionLabel}</Badge>
-              </>
-            ) : null}
-          </div>
+      <Card data-testid="simulation-summary-strip">
+        <CardContent className="space-y-2 py-3">
           {!editing ? (
-            <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>
-              Modifica dati
-            </Button>
-          ) : null}
-        </CardHeader>
-        <CardContent>
-          {!editing ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <DetailItem label="Rete" value={simulation.network} />
-              <DetailItem
-                label="Importo richiesto"
-                value={formatCurrency(simulation.requestedAmount)}
-              />
-              <DetailItem
-                label="Età"
-                value={
-                  simulation.patientAge !== undefined
+            <>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <span className="font-medium">
+                  {simulation.patientFirstName} {simulation.patientLastName}
+                </span>
+                <span className="text-muted-foreground">
+                  {simulation.patientAge !== undefined
                     ? `${simulation.patientAge} anni`
-                    : "—"
-                }
-              />
-              <DetailItem
-                label="Ultimo aggiornamento"
-                value={formatDateTime(simulation.updatedAt)}
-              />
-            </div>
+                    : "—"}
+                </span>
+                <Badge variant="outline">{simulation.network}</Badge>
+                <span className="font-medium tabular-nums">
+                  {formatCurrency(simulation.requestedAmount)}
+                </span>
+                <span className="text-muted-foreground">{employmentLabel}</span>
+                <span className="text-muted-foreground">
+                  {simulation.isNonEuCitizen ? "Extracomunitario" : "Italiano"}
+                </span>
+                {simulation.patientRequestsZeroInterest ? (
+                  <Badge variant="secondary">Richiesta tasso zero</Badge>
+                ) : null}
+                <StatusBadge status={simulation.status} />
+                <ComparisonStatusBadge
+                  comparisonStatus={simulation.comparisonStatus}
+                  simulationStatus={simulation.status}
+                />
+                {simulation.selectedSolutionLabel ? (
+                  <>
+                    <ProposedSolutionBadge />
+                    <Badge variant="outline">
+                      {simulation.selectedSolutionLabel}
+                    </Badge>
+                  </>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className="text-xs font-medium text-muted-foreground"
+                data-testid="show-patient-details"
+                aria-expanded={showPatientDetails}
+                onClick={() => setShowPatientDetails((value) => !value)}
+              >
+                {showPatientDetails
+                  ? "Nascondi dettagli paziente"
+                  : "Mostra dettagli paziente"}
+              </button>
+              {showPatientDetails ? (
+                <p className="text-xs text-muted-foreground">
+                  Ultimo aggiornamento {formatDateTime(simulation.updatedAt)}
+                  {simulation.targetInstallment !== undefined
+                    ? ` · Rata obiettivo ${formatCurrency(simulation.targetInstallment)}`
+                    : ""}
+                  {simulation.requestedDurationMonths !== undefined
+                    ? ` · Durata desiderata ${simulation.requestedDurationMonths} mesi`
+                    : ""}
+                </p>
+              ) : null}
+            </>
           ) : (
-            <form className="grid gap-4 sm:grid-cols-2" onSubmit={onSave}>
+            <form className="grid gap-3 sm:grid-cols-2" onSubmit={onSave}>
               <div className="space-y-2">
                 <Label>Nome</Label>
                 <Input {...form.register("patientFirstName")} />
@@ -344,13 +366,19 @@ export function SimulationDetailPage() {
               {employmentType === "temporary_employee" ? (
                 <div className="space-y-2">
                   <Label>Scadenza contratto</Label>
-                  <Input type="date" {...form.register("temporaryContractExpiry")} />
+                  <Input
+                    type="date"
+                    {...form.register("temporaryContractExpiry")}
+                  />
                 </div>
               ) : null}
               {isNonEuCitizen === "yes" ? (
                 <div className="space-y-2">
                   <Label>Scadenza permesso</Label>
-                  <Input type="date" {...form.register("residencePermitExpiry")} />
+                  <Input
+                    type="date"
+                    {...form.register("residencePermitExpiry")}
+                  />
                 </div>
               ) : null}
               <div className="space-y-2">
@@ -421,15 +449,6 @@ export function SimulationDetailPage() {
         simulation={simulation}
         onEditData={() => setEditing(true)}
       />
-    </div>
-  );
-}
-
-function DetailItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium">{value}</p>
     </div>
   );
 }

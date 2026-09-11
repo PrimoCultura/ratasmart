@@ -1,4 +1,4 @@
-export const ZERO_INTEREST_ALTERNATIVE_VERSION = "1.1.0";
+export const ZERO_INTEREST_ALTERNATIVE_VERSION = "1.2.0";
 
 export const ZERO_INTEREST_ALTERNATIVE_CONFIG = {
   /** Limite tecnico interno di ricerca (non mostrare al CM come soglia operativa). */
@@ -23,7 +23,7 @@ export const DOCTOR_COMPENSATION_NOTE =
   "Con lo sconto si riduce anche la base di fatturato sulla quale viene calcolato il compenso medico.";
 
 export const NO_ZERO_INTEREST_ON_DURATION_MESSAGE =
-  "Nessun tasso zero disponibile sulla durata selezionata.";
+  "Non è disponibile un tasso zero sulla durata selezionata.";
 
 export type ZeroInterestAlternative = {
   /** Classificazione reale della soluzione di riferimento (non inferire dal TAN in UI). */

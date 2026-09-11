@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { LoadingState } from "@/components/common/LoadingState";
 import { ComparisonRunListItemView } from "./ComparisonRunListItem";
 
@@ -23,27 +24,39 @@ export function ComparisonHistory({
   onOpenRun,
   errorMessage,
 }: ComparisonHistoryProps) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
+  const count = runs?.length ?? 0;
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
+    <Card data-testid="comparison-history" data-collapsed={open ? "false" : "true"}>
+      <div className="flex items-center justify-between gap-2 px-3 py-2">
         <button
           type="button"
-          className="flex w-full items-center justify-between text-left"
+          className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm font-medium"
           aria-expanded={open}
+          data-testid="comparison-history-toggle"
           onClick={() => setOpen((value) => !value)}
         >
-          <CardTitle className="text-base">Cronologia confronti</CardTitle>
           {open ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden />
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
           ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
           )}
+          <span>
+            Cronologia confronti{count > 0 ? ` (${count})` : ""}
+          </span>
         </button>
-      </CardHeader>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? "Chiudi" : "Apri"}
+        </Button>
+      </div>
       {open ? (
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-2 border-t pt-3">
           {errorMessage ? (
             <p className="text-sm text-destructive">{errorMessage}</p>
           ) : runs === undefined ? (

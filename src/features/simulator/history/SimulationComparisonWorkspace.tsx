@@ -268,7 +268,7 @@ export function SimulationComparisonWorkspace({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {inputsChanged && viewMode === "latest" && !readOnly ? (
         <SimulationDataChangedAlert
           disabled={isRecalculating}
@@ -277,17 +277,27 @@ export function SimulationComparisonWorkspace({
       ) : null}
 
       {!readOnly ? (
-        <div className="flex flex-wrap gap-2">
+        <div
+          className="flex flex-wrap gap-2"
+          data-testid="simulation-toolbar"
+        >
           <Button
             type="button"
             variant="outline"
+            size="sm"
             disabled={isRecalculating}
             onClick={() => setRecalcOpen(true)}
           >
-            Ricalcola con le condizioni attuali
+            Ricalcola
           </Button>
           {onEditData ? (
-            <Button type="button" variant="outline" onClick={onEditData}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-testid="toolbar-edit-data"
+              onClick={onEditData}
+            >
               Modifica dati
             </Button>
           ) : null}

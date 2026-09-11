@@ -1,12 +1,9 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { ZeroInterestAlternativeAnalysis } from "../../../../shared/zero-interest-alternative";
 import {
   formatPatientTotalDifferenceCopy,
-  getAnalysisCardSubtitle,
-  getAnalysisCardTitle,
   getNetToCompanyReferenceLabel,
   getPrimaryProductHeadline,
-  getReferenceSectionTitle,
 } from "../../../../shared/zero-interest-alternative";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,54 +24,57 @@ function formatDiscountPercent(value: number): string {
   })}%`;
 }
 
-function SideBlock({
-  title,
-  children,
-  emphasized,
-}: {
-  title: string;
-  children: ReactNode;
-  emphasized?: boolean;
-}) {
-  return (
-    <div
-      className={
-        emphasized
-          ? "space-y-3 rounded-md border-2 border-sky-300 bg-sky-50/60 px-3 py-3"
-          : "space-y-2 rounded-md border border-border bg-background px-3 py-3"
-      }
-    >
-      <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
-      {children}
-    </div>
-  );
-}
-
 function Row({
   label,
   value,
-  title,
   emphasize,
 }: {
   label: string;
   value: string;
-  title?: string;
   emphasize?: boolean;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-3">
-      <dt className="text-muted-foreground" title={title}>
-        {label}
-      </dt>
+    <div className="flex items-baseline justify-between gap-2 text-sm">
+      <dt className="text-muted-foreground">{label}</dt>
       <dd
         className={
           emphasize
-            ? "text-right text-base font-semibold tabular-nums"
+            ? "text-right font-semibold tabular-nums"
             : "text-right font-medium tabular-nums"
         }
       >
         {value}
       </dd>
+    </div>
+  );
+}
+
+function CollapsibleBlock({
+  title,
+  testId,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  testId: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div data-testid={testId} className="rounded-md border border-border">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span>{title}</span>
+        <span className="text-xs text-muted-foreground">
+          {open ? "Nascondi" : "Mostra"}
+        </span>
+      </button>
+      {open ? <div className="space-y-2 border-t px-3 py-2">{children}</div> : null}
     </div>
   );
 }
@@ -85,8 +85,6 @@ export function ZeroInterestAlternativeCard({
   if (!analysis.enabled) return null;
 
   const primary = analysis.primary;
-  const referenceType =
-    primary?.referenceType ?? analysis.primaryReferenceType ?? "zero_interest";
   const patientDiff = primary
     ? formatPatientTotalDifferenceCopy(primary.patientTotalDifferenceEuro)
     : null;
@@ -97,15 +95,14 @@ export function ZeroInterestAlternativeCard({
       data-testid="zero-interest-alternative-card"
       className="scroll-mt-4"
     >
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-base">
-          {getAnalysisCardTitle(referenceType)}
-        </CardTitle>
+      <CardHeader className="space-y-1 py-3">
+        <CardTitle className="text-base">Alternativa al tasso zero</CardTitle>
         <p className="text-sm text-muted-foreground">
-          {getAnalysisCardSubtitle(referenceType)}
+          Confronto tra tasso zero e soluzione standard con sconto equivalente
+          sul piano di cura.
         </p>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 pt-0">
         {analysis.messages.map((message) => (
           <p
             key={message}
@@ -120,23 +117,17 @@ export function ZeroInterestAlternativeCard({
             <p className="text-sm font-medium">Alternativa commerciale</p>
 
             <div className="grid gap-3 md:grid-cols-2">
-              <SideBlock title={getReferenceSectionTitle(primary.referenceType)}>
-                <div className="space-y-1">
-                  <p className="text-lg font-semibold tracking-tight">
-                    {primary.zeroCompanyShortName} {primary.zeroTableCode}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {primary.durationMonths} mesi
-                  </p>
-                  {primary.referenceType === "subsidized" ? (
-                    <p className="text-sm text-muted-foreground">
-                      TAN {formatDiscountPercent(primary.referenceCustomerTanPercent)}
-                    </p>
-                  ) : null}
-                </div>
-                <dl className="space-y-1.5 text-sm">
+              <div className="space-y-2 rounded-md border border-border px-3 py-2.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Tasso zero di riferimento
+                </p>
+                <p className="text-base font-semibold">
+                  {primary.zeroCompanyShortName} {primary.zeroTableCode} ·{" "}
+                  {primary.durationMonths} mesi
+                </p>
+                <dl className="space-y-1">
                   <Row
-                    label="Piano di cura"
+                    label="Piano"
                     value={formatCurrency(primary.zeroRateRequestedAmount)}
                   />
                   <Row
@@ -144,38 +135,29 @@ export function ZeroInterestAlternativeCard({
                     value={formatCurrency(primary.zeroRateInstallment)}
                   />
                   <Row
-                    label="Totale restituito dal paziente"
+                    label="Totale paziente"
                     value={formatCurrency(primary.zeroRatePatientTotal)}
-                  />
-                  <Row
-                    label="Commissione finanziata"
-                    value={formatCurrency(primary.zeroRateOpeningFeeAmount)}
-                  />
-                  <Row
-                    label="Importo finanziato"
-                    value={formatCurrency(primary.zeroRateFinancedAmount)}
+                    emphasize
                   />
                   <Row
                     label="Costo azienda"
                     value={formatCurrency(primary.zeroRateCompanyCostEuro)}
                   />
-                  <Row
-                    label="Netto alla società"
-                    value={formatCurrency(primary.zeroRateNetToCompanyEuro)}
-                  />
                 </dl>
-              </SideBlock>
+              </div>
 
-              <SideBlock title="Proposta standard da utilizzare" emphasized>
-                <div className="space-y-1" data-testid="standard-proposal-headline">
-                  <p className="text-lg font-semibold tracking-tight">
-                    {getPrimaryProductHeadline(primary)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {primary.durationMonths} mesi
-                  </p>
-                </div>
-                <dl className="space-y-2 text-sm">
+              <div
+                className="space-y-2 rounded-md border-2 border-sky-300 bg-sky-50/50 px-3 py-2.5"
+                data-testid="standard-proposal-headline"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-sky-900/70">
+                  Standard + sconto
+                </p>
+                <p className="text-base font-semibold">
+                  {getPrimaryProductHeadline(primary)} · {primary.durationMonths}{" "}
+                  mesi
+                </p>
+                <dl className="space-y-1">
                   <Row
                     label="Sconto equivalente"
                     value={formatDiscountPercent(primary.discountPercent)}
@@ -189,18 +171,15 @@ export function ZeroInterestAlternativeCard({
                   <Row
                     label="Rata"
                     value={formatCurrency(primary.standardInstallment)}
-                    emphasize
                   />
                   <Row
-                    label="Totale restituito dal paziente"
+                    label="Totale paziente"
                     value={formatCurrency(primary.standardPatientTotal)}
                     emphasize
                   />
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-sky-200/80 pt-2">
-                    <dt className="text-muted-foreground">
-                      Differenza totale per il paziente
-                    </dt>
-                    <dd className="flex flex-wrap items-center justify-end gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                    <dt className="text-sm text-muted-foreground">Differenza</dt>
+                    <dd className="flex flex-wrap items-center justify-end gap-2 text-sm">
                       <span className="font-semibold tabular-nums">
                         {patientDiff?.text}
                       </span>
@@ -209,28 +188,49 @@ export function ZeroInterestAlternativeCard({
                       ) : null}
                     </dd>
                   </div>
-                  <Row
-                    label="Commissione finanziata"
-                    value={formatCurrency(primary.standardOpeningFeeAmount)}
-                  />
-                  <Row
-                    label="Importo finanziato"
-                    value={formatCurrency(primary.standardFinancedAmount)}
-                  />
-                  <Row
-                    label="Costo azienda"
-                    value={formatCurrency(primary.standardCompanyCostEuro)}
-                  />
-                  <Row
-                    label="Netto alla società"
-                    value={formatCurrency(primary.standardNetToCompanyEuro)}
-                  />
                 </dl>
-              </SideBlock>
+              </div>
             </div>
 
-            <SideBlock title="Impatto PCG">
-              <dl className="space-y-1.5 text-sm">
+            <CollapsibleBlock
+              title="Dettagli economici"
+              testId="zero-alt-economic-details"
+              defaultOpen={false}
+            >
+              <dl className="space-y-1 text-sm">
+                <Row
+                  label="Commissione zero"
+                  value={formatCurrency(primary.zeroRateOpeningFeeAmount)}
+                />
+                <Row
+                  label="Finanziato zero"
+                  value={formatCurrency(primary.zeroRateFinancedAmount)}
+                />
+                <Row
+                  label="Commissione standard"
+                  value={formatCurrency(primary.standardOpeningFeeAmount)}
+                />
+                <Row
+                  label="Finanziato standard"
+                  value={formatCurrency(primary.standardFinancedAmount)}
+                />
+                <Row
+                  label="Netto società zero"
+                  value={formatCurrency(primary.zeroRateNetToCompanyEuro)}
+                />
+                <Row
+                  label="Netto società standard"
+                  value={formatCurrency(primary.standardNetToCompanyEuro)}
+                />
+              </dl>
+            </CollapsibleBlock>
+
+            <CollapsibleBlock
+              title="Impatto PCG"
+              testId="zero-alt-pcg-impact"
+              defaultOpen={false}
+            >
+              <dl className="space-y-1 text-sm">
                 <Row
                   label={getNetToCompanyReferenceLabel(primary.referenceType)}
                   value={formatCurrency(primary.zeroRateNetToCompanyEuro)}
@@ -252,27 +252,29 @@ export function ZeroInterestAlternativeCard({
                   )}
                 />
                 {primary.doctorCompensationBreakEvenPercent !== undefined ? (
-                  <Row
-                    label="Soglia teorica di pareggio compenso medico"
-                    value={formatDiscountPercent(
-                      primary.doctorCompensationBreakEvenPercent,
-                    )}
-                    title={BREAK_EVEN_EXPLANATION}
-                  />
+                  <>
+                    <Row
+                      label="Soglia teorica di pareggio"
+                      value={formatDiscountPercent(
+                        primary.doctorCompensationBreakEvenPercent,
+                      )}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {BREAK_EVEN_EXPLANATION}
+                    </p>
+                  </>
                 ) : null}
               </dl>
-            </SideBlock>
-            {primary.doctorCompensationBreakEvenPercent !== undefined ? (
               <p className="text-xs text-muted-foreground">
-                {BREAK_EVEN_EXPLANATION}
+                {primary.doctorCompensationNote}
               </p>
-            ) : null}
+            </CollapsibleBlock>
 
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+            <p
+              data-testid="zero-alt-autonomy-warning"
+              className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm text-amber-950"
+            >
               {primary.warning}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {primary.doctorCompensationNote}
             </p>
           </>
         ) : null}

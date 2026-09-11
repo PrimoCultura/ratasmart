@@ -6,7 +6,7 @@ import {
 } from "../../../../shared/alternative-diagnostics";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { LoadingState } from "@/components/common/LoadingState";
 import {
   Select,
@@ -21,7 +21,6 @@ import {
 } from "@/lib/constants/financial";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/formatting/currency";
 import {
-  ComparisonHeader,
   ComparisonSection,
 } from "../comparison";
 import { hasCompanyCostOrAuth } from "../comparison/solutionDisplay";
@@ -73,9 +72,12 @@ export function HistoricalComparisonView({
     null,
   );
 
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+
   useEffect(() => {
     setExpandedSolutionId(null);
     setShowIncompatible(false);
+    setShowTechnicalDetails(false);
   }, [bundle?.run._id]);
 
   const diagnostics = useMemo(() => {
@@ -208,147 +210,136 @@ export function HistoricalComparisonView({
   } as const;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <Card>
-        <CardHeader className="space-y-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-2">
+        <CardContent className="space-y-2 py-3">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <CardTitle>
+                <CardTitle className="text-base">
                   {run.isHistorical
                     ? `Confronto storico n. ${run.runNumber}`
                     : `Confronto n. ${run.runNumber}`}
+                  {" · "}
+                  {run.selectedDurationMonths} mesi ·{" "}
+                  {formatCurrency(run.requestedAmount)} · prima rata{" "}
+                  {run.selectedFirstInstallmentDelayDays} gg
                 </CardTitle>
                 {run.isLatest ? (
-                  <Badge variant="secondary">Confronto attuale</Badge>
+                  <Badge variant="secondary">Attuale</Badge>
                 ) : null}
                 {run.isHistorical ? (
-                  <Badge variant="outline">
-                    Condizioni fotografate al momento del calcolo
-                  </Badge>
+                  <Badge variant="outline">Storico</Badge>
                 ) : null}
               </div>
               <p className="text-sm text-muted-foreground">
-                {formatDateTime(run.calculationDate)} · Rete {run.network} ·{" "}
-                {run.selectedDurationMonths} mesi · prima rata{" "}
-                {run.selectedFirstInstallmentDelayDays} giorni
+                {EMPLOYMENT_TYPE_LABELS[patient.employmentType as EmploymentType] ??
+                  patient.employmentType}
+                {" · "}
+                {patient.age} anni ·{" "}
+                {patient.isNonEuCitizen ? "Extracomunitario" : "Italiano"}
+                {run.targetInstallment !== undefined
+                  ? ` · Rata obiettivo ${formatCurrency(run.targetInstallment)}`
+                  : ""}
               </p>
             </div>
             {run.isHistorical && onBackToLatest ? (
-              <Button type="button" variant="outline" onClick={onBackToLatest}>
-                Torna al confronto attuale
+              <Button type="button" variant="outline" size="sm" onClick={onBackToLatest}>
+                Torna all&apos;attuale
               </Button>
             ) : null}
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <Info label="Importo" value={formatCurrency(run.requestedAmount)} />
-            <Info
-              label="Rata obiettivo"
-              value={
-                run.targetInstallment !== undefined
-                  ? formatCurrency(run.targetInstallment)
-                  : "Non indicata"
-              }
-            />
-            <Info label="Età paziente" value={`${patient.age} anni`} />
-            <Info
-              label="Lavoro"
-              value={
-                EMPLOYMENT_TYPE_LABELS[patient.employmentType as EmploymentType] ??
-                patient.employmentType
-              }
-            />
-            <Info
-              label="Extracomunitario"
-              value={patient.isNonEuCitizen ? "Sì" : "No"}
-            />
-            {patient.temporaryContractExpiry !== undefined ? (
-              <Info
-                label="Scadenza contratto"
-                value={formatDate(patient.temporaryContractExpiry)}
-              />
+
+          <div className="flex flex-wrap items-center gap-2">
+            {showDurationSelector &&
+            !run.isHistorical &&
+            onChangeDuration &&
+            availableDurations.length > 0 ? (
+              <>
+                <p className="text-sm text-muted-foreground">Durata confronto</p>
+                <Select
+                  value={String(run.selectedDurationMonths)}
+                  disabled={isRecalculatingDuration}
+                  onValueChange={(value) => onChangeDuration(Number(value))}
+                >
+                  <SelectTrigger className="h-8 w-[140px]">
+                    <SelectValue placeholder="Durata" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableDurations.map((duration) => (
+                      <SelectItem key={duration} value={String(duration)}>
+                        {duration} mesi
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
             ) : null}
-            {patient.residencePermitExpiry !== undefined ? (
-              <Info
-                label="Scadenza permesso"
-                value={formatDate(patient.residencePermitExpiry)}
-              />
+            {bundle.proposedSolution ? (
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <ProposedSolutionBadge />
+                <span className="text-muted-foreground">
+                  {bundle.proposedSolution.companySnapshot.shortName} ·{" "}
+                  {bundle.proposedSolution.financialTableSnapshot.tableCode} ·{" "}
+                  {
+                    bundle.proposedSolution.calculationInputSnapshot
+                      .durationMonths
+                  }{" "}
+                  mesi
+                </span>
+              </div>
             ) : null}
-            <Info label="Motore finanziario" value={run.engineVersion} />
-            <Info label="Motore policy" value={run.policyEngineVersion} />
           </div>
 
-          {showDurationSelector &&
-          !run.isHistorical &&
-          onChangeDuration &&
-          availableDurations.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="text-sm text-muted-foreground">Durata confronto</p>
-              <Select
-                value={String(run.selectedDurationMonths)}
-                disabled={isRecalculatingDuration}
-                onValueChange={(value) => onChangeDuration(Number(value))}
-              >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Seleziona durata" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableDurations.map((duration) => (
-                    <SelectItem key={duration} value={String(duration)}>
-                      {duration} mesi
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <p>ⓘ Compatibilità basata sui requisiti conosciuti.</p>
+            <p>⚠ Bollo/imposta sostitutiva non inclusi.</p>
+          </div>
+
+          <button
+            type="button"
+            className="text-xs font-medium text-muted-foreground"
+            aria-expanded={showTechnicalDetails}
+            onClick={() => setShowTechnicalDetails((value) => !value)}
+          >
+            {showTechnicalDetails
+              ? "Nascondi dettagli tecnici"
+              : "Dettagli tecnici"}
+          </button>
+          {showTechnicalDetails ? (
+            <div className="grid gap-2 rounded-md border px-3 py-2 text-xs text-muted-foreground sm:grid-cols-2">
+              <p>Calcolato: {formatDateTime(run.calculationDate)}</p>
+              <p>Rete: {run.network}</p>
+              <p>Motore finanziario: {run.engineVersion}</p>
+              <p>Motore policy: {run.policyEngineVersion}</p>
+              {patient.temporaryContractExpiry !== undefined ? (
+                <p>
+                  Scadenza contratto: {formatDate(patient.temporaryContractExpiry)}
+                </p>
+              ) : null}
+              {patient.residencePermitExpiry !== undefined ? (
+                <p>
+                  Scadenza permesso: {formatDate(patient.residencePermitExpiry)}
+                </p>
+              ) : null}
+              <p className="sm:col-span-2">{run.disclaimer}</p>
+              <p className="sm:col-span-2">{run.fiscalWarning}</p>
+              {run.warnings.map((warning) => (
+                <p key={warning} className="sm:col-span-2">
+                  {warning}
+                </p>
+              ))}
             </div>
           ) : null}
-
-          {bundle.proposedSolution ? (
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <ProposedSolutionBadge />
-              <span className="text-muted-foreground">
-                {bundle.proposedSolution.companySnapshot.shortName} ·{" "}
-                {bundle.proposedSolution.financialTableSnapshot.tableCode} ·{" "}
-                {
-                  bundle.proposedSolution.calculationInputSnapshot
-                    .durationMonths
-                }{" "}
-                mesi
-              </span>
-            </div>
-          ) : null}
-
-          <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            {run.disclaimer}
-          </div>
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            {run.fiscalWarning}
-          </div>
-          {run.warnings.map((warning) => (
-            <div
-              key={warning}
-              className="rounded-md border border-border px-3 py-2 text-xs text-muted-foreground"
-            >
-              {warning}
-            </div>
-          ))}
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
-        <ComparisonHeader
-          requestedAmount={run.requestedAmount}
-          durationMonths={run.selectedDurationMonths}
-          targetInstallment={run.targetInstallment}
-        />
-
+      <div className="space-y-3">
         {zeroInterestAlternative ? (
           <ZeroInterestAlternativeAlert analysis={zeroInterestAlternative} />
         ) : null}
 
-        <section className="space-y-4">
+        <section className="space-y-3">
           <h2 className="sr-only">Soluzioni compatibili</h2>
           {compatible.length === 0 ? (
             diagnostics ? (
@@ -406,10 +397,11 @@ export function HistoricalComparisonView({
           />
         ) : null}
 
-        <section className="space-y-3">
+        <section className="space-y-2">
           <Button
             type="button"
             variant="outline"
+            size="sm"
             onClick={() => setShowIncompatible((value) => !value)}
             aria-expanded={showIncompatible}
           >
@@ -429,15 +421,6 @@ export function HistoricalComparisonView({
           ) : null}
         </section>
       </div>
-    </div>
-  );
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium">{value}</p>
     </div>
   );
 }

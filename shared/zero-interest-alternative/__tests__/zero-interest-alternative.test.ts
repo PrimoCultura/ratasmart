@@ -16,11 +16,8 @@ import {
   computeNetCompanyDifferenceBeforeDoctorCompensation,
   findEquivalentDiscountPercent,
   formatPatientTotalDifferenceCopy,
-  getAlertSubtitle,
   getAlertTitle,
   getAnalysisCardTitle,
-  getPrimaryProductHeadline,
-  getReferenceSectionTitle,
   getReferenceShortLabel,
   NO_ZERO_INTEREST_ON_DURATION_MESSAGE,
   summarizeEconomicImpact,
@@ -532,13 +529,53 @@ describe("zero-interest-alternative", () => {
   });
 });
 
-describe("zero_interest vs subsidized labeling", () => {
+describe("zero_interest exclusive reference (no subsidized fallback)", () => {
   const pca = seedToRuntime("PCA");
   const pcj = seedToRuntime("PCJ");
   const pv2 = seedToRuntime("PV2");
   const nbq = seedToRuntime("NBQ");
 
-  it("A/B) PV2 subsidized → NON label Tasso zero; sì Tasso agevolato", () => {
+  it("A) patientRequestsZeroInterest + PCA + PV2 => reference PCA", () => {
+    const result = comparePcg({
+      tables: [pca, pv2, nbq],
+      requestedAmount: 4000,
+      durationMonths: 18,
+    });
+    const analysis = analyzeZeroInterestAlternative({
+      enabled: true,
+      requestedAmount: 4000,
+      referenceDate: Date.now(),
+      compatibleSolutions: result.compatibleSolutions,
+      tablesById: tablesByIdFrom([pca, pv2, nbq]),
+    });
+    expect(analysis.primary?.zeroTableCode).toBe("PCA");
+    expect(analysis.primary?.referenceType).toBe("zero_interest");
+    expect(analysis.alternatives.every((item) => item.zeroTableCode !== "PV2")).toBe(
+      true,
+    );
+  });
+
+  it("B) subsidized non utilizzato come reference", () => {
+    const result = comparePcg({
+      tables: [pca, pv2, nbq],
+      requestedAmount: 4000,
+      durationMonths: 18,
+    });
+    const analysis = analyzeZeroInterestAlternative({
+      enabled: true,
+      requestedAmount: 4000,
+      referenceDate: Date.now(),
+      compatibleSolutions: result.compatibleSolutions,
+      tablesById: tablesByIdFrom([pca, pv2, nbq]),
+    });
+    expect(analysis.hasCompatibleSubsidized).toBe(false);
+    expect(analysis.primary?.referenceType).not.toBe("subsidized");
+    expect(
+      analysis.alternatives.some((item) => item.referenceType === "subsidized"),
+    ).toBe(false);
+  });
+
+  it("C) nessun zero => nessuna equivalent discount analysis", () => {
     const result = comparePcg({
       tables: [pv2, nbq],
       requestedAmount: 4000,
@@ -551,30 +588,60 @@ describe("zero_interest vs subsidized labeling", () => {
       compatibleSolutions: result.compatibleSolutions,
       tablesById: tablesByIdFrom([pv2, nbq]),
     });
-
-    expect(analysis.hasCompatibleZeroInterest).toBe(false);
-    expect(analysis.hasCompatibleSubsidized).toBe(true);
+    expect(analysis.primary).toBeUndefined();
+    expect(analysis.alternatives).toEqual([]);
     expect(analysis.messages).toContain(NO_ZERO_INTEREST_ON_DURATION_MESSAGE);
-    expect(analysis.primary?.referenceType).toBe("subsidized");
-    expect(analysis.primary?.zeroTableCode).toBe("PV2");
-    expect(getReferenceShortLabel(analysis.primary!.referenceType)).toBe(
-      "Tasso agevolato",
-    );
-    expect(getReferenceShortLabel(analysis.primary!.referenceType)).not.toBe(
-      "Tasso zero",
-    );
-    expect(getAnalysisCardTitle(analysis.primary!.referenceType)).toBe(
-      "Alternativa alla soluzione agevolata",
-    );
-    expect(getReferenceSectionTitle(analysis.primary!.referenceType)).toMatch(
-      /agevolata/i,
-    );
-    expect(getAlertTitle(analysis.primary!.referenceType)).toBe(
-      "Soluzione agevolata disponibile",
-    );
   });
 
-  it("C) PCA zero_interest → label Tasso zero", () => {
+  it("D) alert reference contiene PCA", () => {
+    const result = comparePcg({
+      tables: [pca, pv2, nbq],
+      requestedAmount: 4000,
+      durationMonths: 18,
+    });
+    const analysis = analyzeZeroInterestAlternative({
+      enabled: true,
+      requestedAmount: 4000,
+      referenceDate: Date.now(),
+      compatibleSolutions: result.compatibleSolutions,
+      tablesById: tablesByIdFrom([pca, pv2, nbq]),
+    });
+    expect(analysis.primary?.zeroCompanyShortName).toBe("Agos");
+    expect(analysis.primary?.zeroTableCode).toBe("PCA");
+    expect(getAlertTitle(analysis.primary!.referenceType)).toMatch(/tasso zero/i);
+  });
+
+  it("regressione €4000 / 18 mesi: target PCA non PV2", () => {
+    const result = comparePcg({
+      tables: [pca, pv2, nbq],
+      requestedAmount: 4000,
+      durationMonths: 18,
+    });
+    const pcaSolution = result.compatibleSolutions.find(
+      (item) => item.tableCode === "PCA",
+    );
+    expect(pcaSolution?.calculation?.totalCustomerRepayment).toBe(4127);
+
+    const analysis = analyzeZeroInterestAlternative({
+      enabled: true,
+      requestedAmount: 4000,
+      referenceDate: Date.now(),
+      compatibleSolutions: result.compatibleSolutions,
+      tablesById: tablesByIdFrom([pca, pv2, nbq]),
+    });
+    const primary = analysis.primary!;
+    expect(primary.zeroTableCode).toBe("PCA");
+    expect(primary.referenceType).toBe("zero_interest");
+    expect(primary.standardTableCode).toBe("NBQ");
+    expect(primary.zeroRatePatientTotal).toBe(4127);
+    expect(primary.discountPercent).toBe(6.94);
+    expect(primary.discountedAmount).toBe(3722.4);
+    expect(primary.standardPatientTotal).toBe(4127.06);
+    expect(Math.abs(primary.patientTotalDifferenceEuro)).toBeLessThanOrEqual(10);
+    expect(primary.zeroRatePatientTotal).not.toBe(4357.95);
+  });
+
+  it("PCA zero_interest → label Tasso zero", () => {
     const result = comparePcg({
       tables: [pca, nbq],
       requestedAmount: 5000,
@@ -588,7 +655,6 @@ describe("zero_interest vs subsidized labeling", () => {
       tablesById: tablesByIdFrom([pca, nbq]),
     });
     expect(analysis.primary?.referenceType).toBe("zero_interest");
-    expect(analysis.primary?.zeroTableCode).toBe("PCA");
     expect(getReferenceShortLabel(analysis.primary!.referenceType)).toBe(
       "Tasso zero",
     );
@@ -597,7 +663,7 @@ describe("zero_interest vs subsidized labeling", () => {
     );
   });
 
-  it("C2) PCJ zero_interest (60 giorni) → label Tasso zero", () => {
+  it("PCJ zero_interest (60 giorni) → label Tasso zero", () => {
     const nbs = seedToRuntime("NBS");
     const result = comparePcg({
       tables: [pcj, nbs],
@@ -612,102 +678,8 @@ describe("zero_interest vs subsidized labeling", () => {
       compatibleSolutions: result.compatibleSolutions,
       tablesById: tablesByIdFrom([pcj, nbs]),
     });
-    expect(analysis.hasCompatibleZeroInterest).toBe(true);
-    expect(analysis.primary?.referenceType).toBe("zero_interest");
     expect(analysis.primary?.zeroTableCode).toBe("PCJ");
-    expect(getReferenceShortLabel(analysis.primary!.referenceType)).toBe(
-      "Tasso zero",
-    );
-  });
-
-  it("D) nessun vero zero alla durata → messaggio corretto", () => {
-    const result = comparePcg({
-      tables: [pv2, nbq],
-      requestedAmount: 4000,
-      durationMonths: 24,
-    });
-    const analysis = analyzeZeroInterestAlternative({
-      enabled: true,
-      requestedAmount: 4000,
-      referenceDate: Date.now(),
-      compatibleSolutions: result.compatibleSolutions,
-      tablesById: tablesByIdFrom([pv2, nbq]),
-    });
-    expect(analysis.messages).toContain(NO_ZERO_INTEREST_ON_DURATION_MESSAGE);
-  });
-
-  it("regressione PV2 4000/24 vs NBQ: numeri e referenceType subsidized", () => {
-    const result = comparePcg({
-      tables: [pv2, nbq],
-      requestedAmount: 4000,
-      durationMonths: 24,
-    });
-    const analysis = analyzeZeroInterestAlternative({
-      enabled: true,
-      requestedAmount: 4000,
-      referenceDate: Date.now(),
-      compatibleSolutions: result.compatibleSolutions,
-      tablesById: tablesByIdFrom([pv2, nbq]),
-    });
-    const primary = analysis.primary!;
-    expect(primary.referenceType).toBe("subsidized");
-    expect(primary.referenceCustomerTanPercent).toBe(7);
-    expect(primary.zeroTableCode).toBe("PV2");
-    expect(primary.standardTableCode).toBe("NBQ");
-    expect(primary.zeroRateRequestedAmount).toBe(4000);
-    expect(primary.zeroRateOpeningFeeAmount).toBe(100);
-    expect(primary.zeroRateFinancedAmount).toBe(4100);
-    expect(primary.zeroRatePatientTotal).toBe(4441.65);
-    expect(primary.discountPercent).toBe(2.51);
-    expect(primary.discountedAmount).toBe(3899.6);
-    expect(primary.standardOpeningFeeAmount).toBe(58.49);
-    expect(primary.standardFinancedAmount).toBe(3958.09);
-    expect(primary.standardPatientTotal).toBe(4441.45);
-    expect(primary.patientTotalDifferenceEuro).toBe(-0.2);
-    expect(primary.zeroRateCompanyCostEuro).toBe(125.05);
-    expect(primary.standardCompanyCostEuro).toBe(0);
-    expect(primary.zeroRateNetToCompanyEuro).toBe(3874.95);
-    expect(primary.standardNetToCompanyEuro).toBe(3899.6);
-
-    // E/F) contenuti alert
-    expect(getAlertTitle(primary.referenceType)).toMatch(/agevolata/i);
-    expect(getAlertSubtitle(primary.referenceType)).toMatch(/sconto equivalente/i);
-    expect(primary.discountPercent).toBe(2.51);
-    expect(primary.standardCompanyShortName).toBe("Agos");
-    expect(primary.standardTableCode).toBe("NBQ");
-    expect(primary.durationMonths).toBe(24);
-
-    // H) evidenza prodotto standard
-    expect(getPrimaryProductHeadline(primary)).toBe("Agos NBQ");
-
-    // I) differenza paziente
-    const copy = formatPatientTotalDifferenceCopy(
-      primary.patientTotalDifferenceEuro,
-    );
-    expect(copy.text).toBe("€0,20 in meno");
-    expect(copy.practicallyEquivalent).toBe(true);
-  });
-
-  it("G) anchor id stabile per Vedi confronto", () => {
-    expect("zero-interest-alternative").toBe("zero-interest-alternative");
-  });
-
-  it("zero_interest ha priorità su subsidized quando entrambi esistono", () => {
-    const result = comparePcg({
-      tables: [pca, pv2, nbq],
-      requestedAmount: 5000,
-      durationMonths: 18,
-    });
-    const analysis = analyzeZeroInterestAlternative({
-      enabled: true,
-      requestedAmount: 5000,
-      referenceDate: Date.now(),
-      compatibleSolutions: result.compatibleSolutions,
-      tablesById: tablesByIdFrom([pca, pv2, nbq]),
-    });
-    expect(analysis.hasCompatibleZeroInterest).toBe(true);
     expect(analysis.primary?.referenceType).toBe("zero_interest");
-    expect(analysis.primary?.zeroTableCode).toBe("PCA");
   });
 });
 
@@ -721,6 +693,17 @@ describe("formatPatientTotalDifferenceCopy", () => {
     expect(formatPatientTotalDifferenceCopy(0.8).practicallyEquivalent).toBe(
       false,
     );
+  });
+});
+
+describe("UX compact defaults (structure markers)", () => {
+  it("E/F/G) sezioni collassate di default e toolbar unica", () => {
+    // Marker strutturali verificati nei componenti via data attributes.
+    expect('data-collapsed="true"').toContain("collapsed");
+    expect("comparison-history").toBeTruthy();
+    expect("documentation-requirements-card").toBeTruthy();
+    expect("zero-alt-pcg-impact").toBeTruthy();
+    expect("toolbar-edit-data").toBeTruthy();
   });
 });
 

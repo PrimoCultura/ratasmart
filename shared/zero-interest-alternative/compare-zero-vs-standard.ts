@@ -15,7 +15,6 @@ import {
   type ZeroInterestAlternative,
   type ZeroInterestAlternativeAnalysis,
   type ZeroInterestAlternativeConfig,
-  type ZeroInterestReferenceType,
 } from "./types.ts";
 import {
   computeDoctorCompensationBaseReduction,
@@ -34,15 +33,34 @@ function isStandard(category: string): boolean {
   return category === "standard";
 }
 
-function isEligibleReference(
-  solution: RuntimeFinancialSolution,
-  referenceType: ZeroInterestReferenceType,
-): boolean {
+function isEligibleZeroInterest(solution: RuntimeFinancialSolution): boolean {
   return (
-    solution.category === referenceType &&
+    solution.category === "zero_interest" &&
     solution.calculation !== null &&
     hasCompanyCostOrAuth(solution)
   );
+}
+
+/**
+ * Ordine riferimento zero_interest:
+ * 1. compatible (già filtrato)
+ * 2. stessa durata del confronto (già filtrato nel comparison)
+ * 3. minore totalCustomerRepayment
+ * 4. minore company cost
+ * 5. ranking commerciale (priorityScore desc)
+ */
+export function rankZeroInterestReferences(
+  solutions: RuntimeFinancialSolution[],
+): RuntimeFinancialSolution[] {
+  return [...solutions].sort((a, b) => {
+    const aTotal = a.calculation!.totalCustomerRepayment;
+    const bTotal = b.calculation!.totalCustomerRepayment;
+    if (aTotal !== bTotal) return aTotal - bTotal;
+    const aCost = a.calculation!.internalCostAmount;
+    const bCost = b.calculation!.internalCostAmount;
+    if (aCost !== bCost) return aCost - bCost;
+    return (b.priorityScore ?? 0) - (a.priorityScore ?? 0);
+  });
 }
 
 function toEconomics(
@@ -72,7 +90,6 @@ function toEconomics(
 
 function buildAlternative(input: {
   reference: RuntimeFinancialSolution;
-  referenceType: ZeroInterestReferenceType;
   standard: RuntimeFinancialSolution;
   referenceCalc: FinancialCalculationResult;
   standardCalc: FinancialCalculationResult;
@@ -105,7 +122,7 @@ function buildAlternative(input: {
     });
 
   return {
-    referenceType: input.referenceType,
+    referenceType: "zero_interest",
     referenceCustomerTanPercent: input.referenceCalc.customerTanPercent,
     zeroSolutionId: input.reference.solutionId,
     standardSolutionId: input.standard.solutionId,
@@ -148,14 +165,16 @@ function buildAlternative(input: {
   };
 }
 
-function rankAlternatives(
+function rankStandardAlternatives(
   items: ZeroInterestAlternative[],
   standardById: Map<string, RuntimeFinancialSolution>,
+  preferredZeroSolutionId?: string,
 ): ZeroInterestAlternative[] {
   return [...items].sort((a, b) => {
-    // Preferisci sempre zero_interest rispetto a subsidized.
-    if (a.referenceType !== b.referenceType) {
-      return a.referenceType === "zero_interest" ? -1 : 1;
+    if (preferredZeroSolutionId) {
+      const aPreferred = a.zeroSolutionId === preferredZeroSolutionId ? 0 : 1;
+      const bPreferred = b.zeroSolutionId === preferredZeroSolutionId ? 0 : 1;
+      if (aPreferred !== bPreferred) return aPreferred - bPreferred;
     }
     const aStd = standardById.get(a.standardSolutionId);
     const bStd = standardById.get(b.standardSolutionId);
@@ -174,83 +193,9 @@ function rankAlternatives(
   });
 }
 
-function collectAlternativesForReferences(input: {
-  references: RuntimeFinancialSolution[];
-  referenceType: ZeroInterestReferenceType;
-  standardSolutions: RuntimeFinancialSolution[];
-  tablesById: Record<string, RuntimeFinancialTable>;
-  requestedAmount: number;
-  config: ZeroInterestAlternativeConfig;
-}): {
-  alternatives: ZeroInterestAlternative[];
-  anySameDurationStandard: boolean;
-  anyBeyondLimit: boolean;
-} {
-  const alternatives: ZeroInterestAlternative[] = [];
-  let anySameDurationStandard = false;
-  let anyBeyondLimit = false;
-
-  for (const reference of input.references) {
-    const referenceCalc = reference.calculation!;
-    const targetPatientTotal = referenceCalc.totalCustomerRepayment;
-
-    const standardsSameDuration = input.standardSolutions.filter(
-      (item) =>
-        item.durationMonths === reference.durationMonths &&
-        item.firstInstallmentDelayDays === reference.firstInstallmentDelayDays,
-    );
-
-    if (standardsSameDuration.length === 0) {
-      continue;
-    }
-    anySameDurationStandard = true;
-
-    for (const standard of standardsSameDuration) {
-      const table = input.tablesById[standard.financialTableId];
-      if (!table) continue;
-      const economics = toEconomics(
-        table,
-        standard.durationMonths,
-        standard.firstInstallmentDelayDays,
-      );
-      if (!economics) continue;
-
-      const search = findEquivalentDiscountPercent({
-        originalAmount: input.requestedAmount,
-        targetPatientTotal,
-        economics,
-        config: input.config,
-      });
-
-      if (search.beyondConfiguredLimit) {
-        anyBeyondLimit = true;
-        continue;
-      }
-      if (!search.found || !search.calculation) continue;
-
-      alternatives.push(
-        buildAlternative({
-          reference,
-          referenceType: input.referenceType,
-          standard,
-          referenceCalc,
-          standardCalc: search.calculation,
-          originalAmount: input.requestedAmount,
-          discountedAmount: search.discountedAmount,
-          discountPercent: search.discountPercent,
-          equivalent: true,
-        }),
-      );
-    }
-  }
-
-  return { alternatives, anySameDurationStandard, anyBeyondLimit };
-}
-
 /**
- * Analizza alternative standard+sconto rispetto a soluzioni
- * zero_interest (prioritarie) o subsidized (fallback).
- * Non modifica ranking del comparison.
+ * Analizza alternative standard+sconto rispetto ESCLUSIVAMENTE a
+ * soluzioni zero_interest compatible. Subsidized non partecipa.
  */
 export function analyzeZeroInterestAlternative(input: {
   enabled: boolean;
@@ -279,35 +224,28 @@ export function analyzeZeroInterestAlternative(input: {
   }
 
   const messages: string[] = [];
-  const zeroInterestSolutions = input.compatibleSolutions.filter((solution) =>
-    isEligibleReference(solution, "zero_interest"),
+  const zeroInterestSolutions = rankZeroInterestReferences(
+    input.compatibleSolutions.filter(isEligibleZeroInterest),
   );
-  const subsidizedSolutions = input.compatibleSolutions.filter((solution) =>
-    isEligibleReference(solution, "subsidized"),
-  );
-
   const hasCompatibleZeroInterest = zeroInterestSolutions.length > 0;
-  const hasCompatibleSubsidized = subsidizedSolutions.length > 0;
 
-  if (!hasCompatibleZeroInterest && !hasCompatibleSubsidized) {
+  // Subsidized non viene usato: flag solo informativo (sempre false per la feature).
+  const hasCompatibleSubsidized = false;
+
+  if (!hasCompatibleZeroInterest) {
     return {
       version: ZERO_INTEREST_ALTERNATIVE_VERSION,
       enabled: true,
       referenceDate: input.referenceDate,
       originalAmount: input.requestedAmount,
       hasCompatibleZeroInterest: false,
-      hasCompatibleSubsidized: false,
+      hasCompatibleSubsidized,
       alternatives: [],
-      messages: [
-        "Nessuna soluzione a tasso zero o agevolata compatible disponibile per il confronto.",
-      ],
+      messages: [NO_ZERO_INTEREST_ON_DURATION_MESSAGE],
     };
   }
 
-  if (!hasCompatibleZeroInterest) {
-    messages.push(NO_ZERO_INTEREST_ON_DURATION_MESSAGE);
-  }
-
+  const preferredZero = zeroInterestSolutions[0]!;
   const standardSolutions = input.compatibleSolutions.filter(
     (solution) =>
       isStandard(solution.category) && solution.calculation !== null,
@@ -316,37 +254,60 @@ export function analyzeZeroInterestAlternative(input: {
     standardSolutions.map((item) => [item.solutionId, item]),
   );
 
-  const fromZero = collectAlternativesForReferences({
-    references: zeroInterestSolutions,
-    referenceType: "zero_interest",
-    standardSolutions,
-    tablesById: input.tablesById,
-    requestedAmount: input.requestedAmount,
-    config,
-  });
+  const alternatives: ZeroInterestAlternative[] = [];
+  let anySameDurationStandard = false;
+  let anyBeyondLimit = false;
 
-  let alternatives = fromZero.alternatives;
-  let anySameDurationStandard = fromZero.anySameDurationStandard;
-  let anyBeyondLimit = fromZero.anyBeyondLimit;
-  let usedReferenceType: ZeroInterestReferenceType | undefined =
-    alternatives.length > 0 ? "zero_interest" : undefined;
+  for (const reference of zeroInterestSolutions) {
+    const referenceCalc = reference.calculation!;
+    const targetPatientTotal = referenceCalc.totalCustomerRepayment;
 
-  // Fallback: solo se non esiste alternativa su vero tasso zero.
-  if (alternatives.length === 0 && hasCompatibleSubsidized) {
-    const fromSubsidized = collectAlternativesForReferences({
-      references: subsidizedSolutions,
-      referenceType: "subsidized",
-      standardSolutions,
-      tablesById: input.tablesById,
-      requestedAmount: input.requestedAmount,
-      config,
-    });
-    alternatives = fromSubsidized.alternatives;
-    anySameDurationStandard =
-      anySameDurationStandard || fromSubsidized.anySameDurationStandard;
-    anyBeyondLimit = anyBeyondLimit || fromSubsidized.anyBeyondLimit;
-    if (alternatives.length > 0) {
-      usedReferenceType = "subsidized";
+    const standardsSameDuration = standardSolutions.filter(
+      (item) =>
+        item.durationMonths === reference.durationMonths &&
+        item.firstInstallmentDelayDays === reference.firstInstallmentDelayDays,
+    );
+
+    if (standardsSameDuration.length === 0) {
+      continue;
+    }
+    anySameDurationStandard = true;
+
+    for (const standard of standardsSameDuration) {
+      const table = input.tablesById[standard.financialTableId];
+      if (!table) continue;
+      const economics = toEconomics(
+        table,
+        standard.durationMonths,
+        standard.firstInstallmentDelayDays,
+      );
+      if (!economics) continue;
+
+      const search = findEquivalentDiscountPercent({
+        originalAmount: input.requestedAmount,
+        targetPatientTotal,
+        economics,
+        config,
+      });
+
+      if (search.beyondConfiguredLimit) {
+        anyBeyondLimit = true;
+        continue;
+      }
+      if (!search.found || !search.calculation) continue;
+
+      alternatives.push(
+        buildAlternative({
+          reference,
+          standard,
+          referenceCalc,
+          standardCalc: search.calculation,
+          originalAmount: input.requestedAmount,
+          discountedAmount: search.discountedAmount,
+          discountPercent: search.discountPercent,
+          equivalent: true,
+        }),
+      );
     }
   }
 
@@ -359,18 +320,18 @@ export function analyzeZeroInterestAlternative(input: {
       messages.push(
         "Nessuna alternativa standard equivalente entro il limite configurato.",
       );
-    } else if (hasCompatibleZeroInterest) {
-      messages.push(
-        "Nessuna alternativa standard equivalente trovata per le soluzioni a tasso zero disponibili.",
-      );
     } else {
       messages.push(
-        "Nessuna alternativa standard equivalente trovata per le soluzioni agevolate disponibili.",
+        "Nessuna alternativa standard equivalente trovata per le soluzioni a tasso zero disponibili.",
       );
     }
   }
 
-  const ranked = rankAlternatives(alternatives, standardById);
+  const ranked = rankStandardAlternatives(
+    alternatives,
+    standardById,
+    preferredZero.solutionId,
+  );
   const primary = ranked[0];
 
   return {
@@ -378,7 +339,7 @@ export function analyzeZeroInterestAlternative(input: {
     enabled: true,
     referenceDate: input.referenceDate,
     originalAmount: input.requestedAmount,
-    primaryReferenceType: primary?.referenceType ?? usedReferenceType,
+    primaryReferenceType: primary ? "zero_interest" : undefined,
     hasCompatibleZeroInterest,
     hasCompatibleSubsidized,
     primary,

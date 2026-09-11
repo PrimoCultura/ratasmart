@@ -21,7 +21,7 @@ export {
 } from "./find-equivalent-discount.ts";
 export type { StandardTableEconomics } from "./find-equivalent-discount.ts";
 
-export { analyzeZeroInterestAlternative } from "./compare-zero-vs-standard.ts";
+export { analyzeZeroInterestAlternative, rankZeroInterestReferences } from "./compare-zero-vs-standard.ts";
 export {
   summarizeEconomicImpact,
   computeNetCompanyDifferenceBeforeDoctorCompensation,
