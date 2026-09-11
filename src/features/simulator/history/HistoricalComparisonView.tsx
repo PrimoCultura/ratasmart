@@ -31,6 +31,7 @@ import { ProposedSolutionBadge } from "./ProposedSolutionBadge";
 import { evaluateIncomeDocumentRequirements } from "../../../../shared/documentation-requirements";
 import type { ZeroInterestAlternativeAnalysis } from "../../../../shared/zero-interest-alternative";
 import { ZeroInterestAlternativeCard } from "./ZeroInterestAlternativeCard";
+import { ZeroInterestAlternativeAlert } from "./ZeroInterestAlternativeAlert";
 
 type ComparisonBundle = {
   run: Doc<"simulationComparisonRuns"> & {
@@ -342,6 +343,10 @@ export function HistoricalComparisonView({
           durationMonths={run.selectedDurationMonths}
           targetInstallment={run.targetInstallment}
         />
+
+        {zeroInterestAlternative ? (
+          <ZeroInterestAlternativeAlert analysis={zeroInterestAlternative} />
+        ) : null}
 
         <section className="space-y-4">
           <h2 className="sr-only">Soluzioni compatibili</h2>

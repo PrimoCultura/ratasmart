@@ -1,4 +1,4 @@
-export const ZERO_INTEREST_ALTERNATIVE_VERSION = "1.0.0";
+export const ZERO_INTEREST_ALTERNATIVE_VERSION = "1.1.0";
 
 export const ZERO_INTEREST_ALTERNATIVE_CONFIG = {
   /** Limite tecnico interno di ricerca (non mostrare al CM come soglia operativa). */
@@ -13,13 +13,23 @@ export type ZeroInterestAlternativeConfig = {
   equivalenceTolerancePercent: number;
 };
 
+/** Classificazione strutturata della soluzione di riferimento. */
+export type ZeroInterestReferenceType = "zero_interest" | "subsidized";
+
 export const ZERO_VS_STANDARD_AUTONOMY_WARNING =
   "Verifica che la percentuale di sconto rientri nei livelli di autonomia e nelle autorizzazioni aziendali attualmente in vigore.";
 
 export const DOCTOR_COMPENSATION_NOTE =
   "Con lo sconto si riduce anche la base di fatturato sulla quale viene calcolato il compenso medico.";
 
+export const NO_ZERO_INTEREST_ON_DURATION_MESSAGE =
+  "Nessun tasso zero disponibile sulla durata selezionata.";
+
 export type ZeroInterestAlternative = {
+  /** Classificazione reale della soluzione di riferimento (non inferire dal TAN in UI). */
+  referenceType: ZeroInterestReferenceType;
+  /** TAN cliente della tabella di riferimento (utile per subsidized). */
+  referenceCustomerTanPercent: number;
   zeroSolutionId: string;
   standardSolutionId: string;
   zeroCompanyShortName: string;
@@ -48,8 +58,8 @@ export type ZeroInterestAlternative = {
   standardNetToCompanyEuro: number;
   discountValueEuro: number;
   /**
-   * standardNet − zeroNet.
-   * Positivo = standard migliore; negativo = tasso zero migliore.
+   * standardNet − referenceNet.
+   * Positivo = standard migliore; negativo = riferimento migliore.
    */
   netCompanyDifferenceBeforeDoctorCompensationEuro: number;
   /** Riduzione base fatturato per compenso medico (non monetizzata). */
@@ -66,6 +76,12 @@ export type ZeroInterestAlternativeAnalysis = {
   enabled: boolean;
   referenceDate: number;
   originalAmount: number;
+  /** Tipo della proposta primaria, se presente. */
+  primaryReferenceType?: ZeroInterestReferenceType;
+  /** True se esisteva almeno un zero_interest compatible (anche senza alternativa). */
+  hasCompatibleZeroInterest: boolean;
+  /** True se esisteva almeno un subsidized compatible. */
+  hasCompatibleSubsidized: boolean;
   primary?: ZeroInterestAlternative;
   alternatives: ZeroInterestAlternative[];
   messages: string[];
