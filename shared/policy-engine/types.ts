@@ -17,6 +17,8 @@ export type PatientFinancialProfile = {
   /** Solo ricevuta di rinnovo del permesso (senza permesso in corso di validità). */
   hasResidencePermitRenewalReceiptOnly?: boolean;
   /** Anzianità lavorativa in mesi (tempo indeterminato). */
+  /** ISO `YYYY-MM-DD` se nota; l’anzianità in mesi si deriva dalla referenceDate. */
+  employmentStartDate?: string;
   employmentSeniorityMonths?: number;
   /** Presenza di un garante dichiarato dal CM. */
   hasGuarantor?: boolean;

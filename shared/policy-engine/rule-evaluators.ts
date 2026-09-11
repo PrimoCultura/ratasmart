@@ -271,11 +271,12 @@ export function evaluatePolicyRule(
         return verification(rule, "numericValue mancante");
       }
       if (patient.employmentSeniorityMonths === undefined) {
+        // Dato mancante: NON usare failure/verificationMessage della soglia
+        // (es. “inferiore ai 12 mesi”), altrimenti si confonde assenza e sotto-soglia.
         return verification(
           rule,
-          "Anzianità lavorativa mancante",
-          rule.verificationMessage ??
-            "Indicare l’anzianità lavorativa in mesi per il tempo indeterminato.",
+          "Data di assunzione mancante",
+          "Data di assunzione non indicata: verificare che l’anzianità lavorativa sia di almeno 12 mesi.",
         );
       }
       const operator = rule.operator || "greater_than_or_equal";

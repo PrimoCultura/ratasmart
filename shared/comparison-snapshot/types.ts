@@ -47,7 +47,10 @@ export type PatientSnapshot = {
   isNonEuCitizen: boolean;
   residencePermitExpiry?: number;
   hasResidencePermitRenewalReceiptOnly?: boolean;
+  employmentStartDate?: string;
   employmentSeniorityMonths?: number;
+  /** Data di riferimento usata per calcolare l'anzianità (ms). */
+  seniorityReferenceDate?: number;
   hasGuarantor?: boolean;
 };
 

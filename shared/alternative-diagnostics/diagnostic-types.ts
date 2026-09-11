@@ -1,9 +1,11 @@
+import type { DocumentationRequirements } from "../documentation-requirements/index.ts";
+
 /**
  * Diagnostica deterministica delle alternative di confronto.
  * Non usa AI; riusa policy-engine e vincoli delle tabelle attive.
  */
 
-export const ALTERNATIVE_DIAGNOSTICS_VERSION = "1.0.0";
+export const ALTERNATIVE_DIAGNOSTICS_VERSION = "1.1.0";
 
 export type BlockingConstraintType =
   | "temporary_contract_expiry"
@@ -54,8 +56,11 @@ export type InformationalSuggestion = {
 export type ComparisonDiagnostics = {
   version: string;
   hasCompatibleSolutions: boolean;
+  /** Soluzioni in verification_required (per titolo UI). */
+  verificationRequiredCount: number;
   blockingConstraints: BlockingConstraint[];
   primaryConstraint?: BlockingConstraint;
   nearestAlternatives: AlternativeScenario[];
   informationalSuggestions: InformationalSuggestion[];
+  documentationRequirements?: DocumentationRequirements;
 };

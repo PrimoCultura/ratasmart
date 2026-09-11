@@ -185,6 +185,7 @@ export const createDraftSimulation = mutation({
     isNonEuCitizen: v.optional(v.boolean()),
     residencePermitExpiry: v.optional(v.number()),
     hasResidencePermitRenewalReceiptOnly: v.optional(v.boolean()),
+    employmentStartDate: v.optional(v.string()),
     employmentSeniorityMonths: v.optional(v.number()),
     hasGuarantor: v.optional(v.boolean()),
     requestedDurationMonths: v.optional(v.number()),
@@ -231,6 +232,7 @@ export const createDraftSimulation = mutation({
       residencePermitExpiry: args.residencePermitExpiry,
       hasResidencePermitRenewalReceiptOnly:
         args.hasResidencePermitRenewalReceiptOnly,
+      employmentStartDate: args.employmentStartDate,
       employmentSeniorityMonths: args.employmentSeniorityMonths,
       hasGuarantor: args.hasGuarantor,
       requestedDurationMonths: args.requestedDurationMonths,
@@ -258,6 +260,7 @@ export const updateSimulationPatientData = mutation({
     isNonEuCitizen: v.boolean(),
     residencePermitExpiry: v.optional(v.number()),
     hasResidencePermitRenewalReceiptOnly: v.optional(v.boolean()),
+    employmentStartDate: v.optional(v.string()),
     employmentSeniorityMonths: v.optional(v.number()),
     hasGuarantor: v.optional(v.boolean()),
     requestedDurationMonths: v.optional(v.number()),
@@ -271,6 +274,10 @@ export const updateSimulationPatientData = mutation({
 
     const { patientFirstName, patientLastName } = validatePatientFields(args);
     const now = Date.now();
+
+    const storesEmploymentStart =
+      args.employmentType === "permanent_employee" ||
+      args.employmentType === "temporary_employee";
 
     const payload = {
       patientFirstName,
@@ -291,10 +298,12 @@ export const updateSimulationPatientData = mutation({
       hasResidencePermitRenewalReceiptOnly: args.isNonEuCitizen
         ? args.hasResidencePermitRenewalReceiptOnly
         : undefined,
-      employmentSeniorityMonths:
-        args.employmentType === "permanent_employee"
-          ? args.employmentSeniorityMonths
-          : undefined,
+      employmentStartDate: storesEmploymentStart
+        ? args.employmentStartDate
+        : undefined,
+      employmentSeniorityMonths: storesEmploymentStart
+        ? args.employmentSeniorityMonths
+        : undefined,
       hasGuarantor: args.hasGuarantor,
       requestedDurationMonths: args.requestedDurationMonths,
       preferredFirstInstallmentDelayDays:

@@ -45,6 +45,10 @@ type FormState = {
   visibility: "patient_safe" | "internal_only";
   sourceReference: string;
   adminNotes: string;
+  showInFaq: boolean;
+  faqQuestion: string;
+  faqCategory: string;
+  faqOrder: string;
   isActive: boolean;
   validFrom: string;
   validTo: string;
@@ -66,6 +70,10 @@ const emptyForm: FormState = {
   visibility: "internal_only",
   sourceReference: "",
   adminNotes: "",
+  showInFaq: false,
+  faqQuestion: "",
+  faqCategory: "",
+  faqOrder: "",
   isActive: true,
   validFrom: "",
   validTo: "",
@@ -125,6 +133,13 @@ export function KnowledgeCardFormPage({
       visibility: card.visibility ?? "internal_only",
       sourceReference: card.sourceReference ?? "",
       adminNotes: card.adminNotes ?? "",
+      showInFaq: card.showInFaq ?? false,
+      faqQuestion: card.faqQuestion ?? "",
+      faqCategory: card.faqCategory ?? "",
+      faqOrder:
+        card.faqOrder !== undefined && card.faqOrder !== null
+          ? String(card.faqOrder)
+          : "",
       isActive: card.isActive,
       validFrom: toDateInput(card.validFrom),
       validTo: toDateInput(card.validTo),
@@ -185,6 +200,10 @@ export function KnowledgeCardFormPage({
     visibility: form.visibility,
     sourceReference: form.sourceReference || undefined,
     adminNotes: form.adminNotes || undefined,
+    showInFaq: form.showInFaq,
+    faqQuestion: form.faqQuestion || undefined,
+    faqCategory: form.faqCategory || undefined,
+    faqOrder: form.faqOrder.trim() ? Number(form.faqOrder) : undefined,
     isActive: form.isActive,
     validFrom: parseDate(form.validFrom),
     validTo: parseDate(form.validTo),
@@ -221,6 +240,10 @@ export function KnowledgeCardFormPage({
           alwaysInclude: payload.alwaysInclude,
           isAlert: payload.isAlert,
           alertLabel: payload.alertLabel,
+          showInFaq: payload.showInFaq,
+          faqQuestion: payload.faqQuestion,
+          faqCategory: payload.faqCategory,
+          faqOrder: payload.faqOrder,
         });
         toast.success("Metadati aggiornati");
       }
@@ -417,6 +440,66 @@ export function KnowledgeCardFormPage({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>FAQ operative (CM)</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <label className="flex items-center gap-2 text-sm sm:col-span-2">
+            <Checkbox
+              checked={form.showInFaq}
+              onCheckedChange={(checked) =>
+                setForm((current) => ({
+                  ...current,
+                  showInFaq: checked === true,
+                }))
+              }
+            />
+            Mostra nelle FAQ
+          </label>
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Domanda FAQ</Label>
+            <Input
+              value={form.faqQuestion}
+              placeholder="Opzionale: se vuota usa il titolo"
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  faqQuestion: event.target.value,
+                }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Categoria FAQ</Label>
+            <Input
+              value={form.faqCategory}
+              placeholder="es. Documenti"
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  faqCategory: event.target.value,
+                }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Ordine FAQ</Label>
+            <Input
+              value={form.faqOrder}
+              inputMode="numeric"
+              placeholder="es. 10"
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  faqOrder: event.target.value,
+                }))
+              }
+            />
           </div>
         </CardContent>
       </Card>

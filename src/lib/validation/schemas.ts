@@ -69,6 +69,10 @@ export const patientSimulationSchema = z
     }),
     residencePermitExpiry: z.number().optional(),
     hasResidencePermitRenewalReceiptOnly: z.boolean().optional(),
+    employmentStartDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Data di assunzione non valida")
+      .optional(),
     employmentSeniorityMonths: z
       .number()
       .int()

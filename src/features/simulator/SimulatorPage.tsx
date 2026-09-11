@@ -35,6 +35,7 @@ import {
   type PatientSimulationInput,
 } from "@/lib/validation/schemas";
 import { createComparisonRequestId } from "@/hooks";
+import { calculateEmploymentSeniorityMonths } from "../../../shared/policy-engine/employment-seniority";
 
 type FormValues = {
   patientFirstName: string;
@@ -46,7 +47,7 @@ type FormValues = {
   isNonEuCitizen: "yes" | "no";
   residencePermitExpiry: string;
   hasResidencePermitRenewalReceiptOnly: boolean;
-  employmentSeniorityMonths: string;
+  employmentStartDate: string;
   hasGuarantor: "yes" | "no" | "";
   requestedAmount: string;
   targetInstallment: string;
@@ -83,7 +84,7 @@ export function SimulatorPage() {
       isNonEuCitizen: "no",
       residencePermitExpiry: "",
       hasResidencePermitRenewalReceiptOnly: false,
-      employmentSeniorityMonths: "",
+      employmentStartDate: "",
       hasGuarantor: "",
       requestedAmount: "",
       targetInstallment: "",
@@ -96,7 +97,9 @@ export function SimulatorPage() {
   const isNonEuCitizen = form.watch("isNonEuCitizen");
   const showContractExpiry = employmentType === "temporary_employee";
   const showPermitExpiry = isNonEuCitizen === "yes";
-  const showSeniority = employmentType === "permanent_employee";
+  const showEmploymentStart =
+    employmentType === "permanent_employee" ||
+    employmentType === "temporary_employee";
   const showGuarantor =
     employmentType === "student" || employmentType === "housewife";
 
@@ -133,10 +136,20 @@ export function SimulatorPage() {
         values.isNonEuCitizen === "yes"
           ? values.hasResidencePermitRenewalReceiptOnly
           : undefined,
+      employmentStartDate:
+        (values.employmentType === "permanent_employee" ||
+          values.employmentType === "temporary_employee") &&
+        values.employmentStartDate.trim()
+          ? values.employmentStartDate.trim()
+          : undefined,
       employmentSeniorityMonths:
-        values.employmentType === "permanent_employee" &&
-        values.employmentSeniorityMonths.trim()
-          ? Number(values.employmentSeniorityMonths)
+        (values.employmentType === "permanent_employee" ||
+          values.employmentType === "temporary_employee") &&
+        values.employmentStartDate.trim()
+          ? calculateEmploymentSeniorityMonths({
+              employmentStartDate: values.employmentStartDate.trim(),
+              referenceDate: Date.now(),
+            })
           : undefined,
       hasGuarantor:
         values.hasGuarantor === "yes"
@@ -317,16 +330,13 @@ export function SimulatorPage() {
                 </label>
               </>
             ) : null}
-            {showSeniority ? (
+            {showEmploymentStart ? (
               <div className="space-y-2">
-                <Label htmlFor="employmentSeniorityMonths">
-                  Anzianità lavorativa (mesi)
-                </Label>
+                <Label htmlFor="employmentStartDate">Data di assunzione</Label>
                 <Input
-                  id="employmentSeniorityMonths"
-                  inputMode="numeric"
-                  placeholder="es. 12"
-                  {...form.register("employmentSeniorityMonths")}
+                  id="employmentStartDate"
+                  type="date"
+                  {...form.register("employmentStartDate")}
                 />
               </div>
             ) : null}

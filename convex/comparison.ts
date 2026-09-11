@@ -4,6 +4,9 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { buildComparisonResult } from "../shared/policy-engine/index";
+import {
+  resolveEmploymentSeniorityMonths,
+} from "../shared/policy-engine/employment-seniority";
 import type {
   PatientFinancialProfile,
   SimulationComparisonResult,
@@ -86,6 +89,14 @@ export const calculateSimulationComparison = action({
         );
       }
 
+      const calculationDate = bundle.now;
+
+      const employmentSeniorityMonths = resolveEmploymentSeniorityMonths({
+        employmentStartDate: simulation.employmentStartDate,
+        employmentSeniorityMonths: simulation.employmentSeniorityMonths,
+        referenceDate: calculationDate,
+      });
+
       const patient: PatientFinancialProfile = {
         age: simulation.patientAge,
         employmentType: simulation.employmentType,
@@ -94,11 +105,10 @@ export const calculateSimulationComparison = action({
         residencePermitExpiry: simulation.residencePermitExpiry,
         hasResidencePermitRenewalReceiptOnly:
           simulation.hasResidencePermitRenewalReceiptOnly,
-        employmentSeniorityMonths: simulation.employmentSeniorityMonths,
+        employmentStartDate: simulation.employmentStartDate,
+        employmentSeniorityMonths,
         hasGuarantor: simulation.hasGuarantor,
       };
-
-      const calculationDate = bundle.now;
 
       const result = buildComparisonResult({
         simulationId: simulation._id,
@@ -185,7 +195,9 @@ export const calculateSimulationComparison = action({
             residencePermitExpiry: simulation.residencePermitExpiry,
             hasResidencePermitRenewalReceiptOnly:
               simulation.hasResidencePermitRenewalReceiptOnly,
-            employmentSeniorityMonths: simulation.employmentSeniorityMonths,
+            employmentStartDate: simulation.employmentStartDate,
+            employmentSeniorityMonths,
+            seniorityReferenceDate: calculationDate,
             hasGuarantor: simulation.hasGuarantor,
           }),
           result,

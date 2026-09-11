@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import {
+  CircleHelp,
   History,
   Home,
   MessageSquare,
@@ -11,6 +12,7 @@ const links = [
   { to: "/app", label: "Home", icon: Home, end: true },
   { to: "/app/simulator", label: "Nuova simulazione", icon: PlusCircle },
   { to: "/app/chat", label: "Chat", icon: MessageSquare },
+  { to: "/app/faq", label: "FAQ", icon: CircleHelp },
   { to: "/app/history", label: "Cronologia", icon: History },
 ];
 

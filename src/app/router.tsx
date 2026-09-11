@@ -18,6 +18,7 @@ import { KnowledgeCardFormPage } from "@/features/admin/virtual-marco/KnowledgeC
 import { KnowledgePreviewPage } from "@/features/admin/virtual-marco/KnowledgePreviewPage";
 import { AssistantConversationsAdminPage } from "@/features/admin/virtual-marco/AssistantConversationsAdminPage";
 import { ChatPage } from "@/features/chat/ChatPage";
+import { FaqPage } from "@/features/faq/FaqPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { HistoryPage } from "@/features/history/HistoryPage";
 import { SimulationDetailPage } from "@/features/history/SimulationDetailPage";
@@ -58,6 +59,7 @@ export function AppRouter() {
           <Route index element={<DashboardPage />} />
           <Route path="simulator" element={<SimulatorPage />} />
           <Route path="chat" element={<ChatPage />} />
+          <Route path="faq" element={<FaqPage />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="history/:simulationId" element={<SimulationDetailPage />} />
         </Route>

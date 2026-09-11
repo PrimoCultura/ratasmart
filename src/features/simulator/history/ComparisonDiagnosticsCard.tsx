@@ -15,12 +15,31 @@ function alternativeLabel(item: AlternativeScenario): string {
   return "Condizione da rivalutare";
 }
 
+function emptyEconomicMessage(diagnostics: ComparisonDiagnostics): string {
+  const primary = diagnostics.primaryConstraint?.type;
+  if (primary === "temporary_contract_expiry") {
+    return "Con i dati attuali non esiste un prodotto disponibile con una durata sufficientemente breve per rispettare la scadenza del contratto.";
+  }
+  if (primary === "residence_permit_expiry") {
+    return "Con i dati attuali non esiste un prodotto disponibile con una durata sufficientemente breve per rispettare la scadenza del permesso di soggiorno.";
+  }
+  return "Con i dati attuali non esiste un prodotto immediatamente disponibile che rispetti tutti i requisiti dichiarati.";
+}
+
 export function ComparisonDiagnosticsCard({
   diagnostics,
 }: ComparisonDiagnosticsCardProps) {
   if (diagnostics.hasCompatibleSolutions) {
     return null;
   }
+
+  const hasVerification = (diagnostics.verificationRequiredCount ?? 0) > 0;
+  const title = hasVerification
+    ? "Nessuna soluzione immediatamente compatibile"
+    : "Nessuna soluzione disponibile";
+  const subtitle = hasVerification
+    ? "Alcune soluzioni richiedono una verifica dei requisiti."
+    : "Con i dati attuali nessun piano rispetta tutti i requisiti.";
 
   const secondary = diagnostics.blockingConstraints.filter(
     (item) => item.type !== diagnostics.primaryConstraint?.type,
@@ -42,10 +61,8 @@ export function ComparisonDiagnosticsCard({
       className="border-amber-200 bg-amber-50/60"
     >
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Nessuna soluzione disponibile</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Con i dati attuali nessun piano rispetta tutti i requisiti.
-        </p>
+        <CardTitle className="text-base">{title}</CardTitle>
+        <p className="text-sm text-muted-foreground">{subtitle}</p>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
         {diagnostics.primaryConstraint ? (
@@ -87,11 +104,7 @@ export function ComparisonDiagnosticsCard({
             Possibili strade da valutare
           </p>
           {economicAlternatives.length === 0 ? (
-            <p>
-              Con i dati attuali non esiste un prodotto disponibile con una
-              durata sufficientemente breve per rispettare la scadenza del
-              contratto.
-            </p>
+            <p>{emptyEconomicMessage(diagnostics)}</p>
           ) : (
             <ul className="list-disc space-y-2 pl-5">
               {economicAlternatives.map((item) => (

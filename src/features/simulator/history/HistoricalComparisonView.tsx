@@ -26,7 +26,9 @@ import {
 } from "../comparison";
 import { hasCompanyCostOrAuth } from "../comparison/solutionDisplay";
 import { ComparisonDiagnosticsCard } from "./ComparisonDiagnosticsCard";
+import { DocumentationRequirementsCard } from "./DocumentationRequirementsCard";
 import { ProposedSolutionBadge } from "./ProposedSolutionBadge";
+import { evaluateIncomeDocumentRequirements } from "../../../../shared/documentation-requirements";
 
 type ComparisonBundle = {
   run: Doc<"simulationComparisonRuns"> & {
@@ -78,6 +80,9 @@ export function HistoricalComparisonView({
     const compatibleCount = solutions.filter(
       (item) => item.resultGroup === "compatible",
     ).length;
+    const verificationCount = solutions.filter(
+      (item) => item.resultGroup === "verification_required",
+    ).length;
     if (compatibleCount > 0) return null;
 
     const patient = run.patientSnapshot;
@@ -90,6 +95,7 @@ export function HistoricalComparisonView({
     return resolveComparisonDiagnostics({
       persistedDiagnostics: persisted,
       hasCompatibleSolutions: false,
+      verificationRequiredCount: verificationCount,
       calculationDate: run.calculationDate,
       requestedAmount: run.requestedAmount,
       selectedDurationMonths: run.selectedDurationMonths,
@@ -102,6 +108,9 @@ export function HistoricalComparisonView({
         residencePermitExpiry: patient.residencePermitExpiry,
         hasResidencePermitRenewalReceiptOnly:
           patient.hasResidencePermitRenewalReceiptOnly,
+        employmentStartDate: (
+          patient as typeof patient & { employmentStartDate?: string }
+        ).employmentStartDate,
         employmentSeniorityMonths: patient.employmentSeniorityMonths,
         hasGuarantor: patient.hasGuarantor,
       },
@@ -110,9 +119,32 @@ export function HistoricalComparisonView({
         companyShortName: item.companySnapshot.shortName,
         compatibilitySnapshot: item.compatibilitySnapshot,
         technicalExclusionReasons: item.technicalExclusionReasons,
+        openingFeeAmount: item.calculationSummary?.openingFeeAmount,
       })),
     });
   }, [bundle]);
+
+  const documentationRequirements = useMemo(() => {
+    if (!bundle) return null;
+    const persisted = (
+      bundle.run as Doc<"simulationComparisonRuns"> & {
+        diagnosticsSnapshot?: ComparisonDiagnostics;
+      }
+    ).diagnosticsSnapshot?.documentationRequirements;
+    if (persisted) return persisted;
+    if (diagnostics?.documentationRequirements) {
+      return diagnostics.documentationRequirements;
+    }
+    const maxFee = bundle.solutions.reduce((max, solution) => {
+      const fee = solution.calculationSummary?.openingFeeAmount ?? 0;
+      return fee > max ? fee : max;
+    }, 0);
+    return evaluateIncomeDocumentRequirements({
+      requestedAmount: bundle.run.requestedAmount,
+      financedFees: maxFee,
+      isNonEuCitizen: bundle.run.patientSnapshot.isNonEuCitizen,
+    });
+  }, [bundle, diagnostics]);
 
   if (bundle === undefined) {
     return <LoadingState label="Caricamento confronto…" />;
@@ -333,6 +365,12 @@ export function HistoricalComparisonView({
               ) : null}
             </>
           )}
+
+          {documentationRequirements ? (
+            <DocumentationRequirementsCard
+              documentation={documentationRequirements}
+            />
+          ) : null}
         </section>
 
         {verification.length > 0 ? (

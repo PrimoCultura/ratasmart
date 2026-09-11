@@ -179,6 +179,23 @@ export const listActiveKnowledgeCards = query({
   },
 });
 
+export const listFaqKnowledgeCards = query({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const cards = await ctx.db
+      .query("knowledgeCards")
+      .withIndex("by_is_active", (q) => q.eq("isActive", true))
+      .collect();
+
+    return cards.filter(
+      (card) =>
+        card.showInFaq === true &&
+        isCurrentlyValid(now, card.validFrom, card.validTo),
+    );
+  },
+});
+
 export const createKnowledgeCard = mutation({
   args: {
     actorUserId: v.id("appUsers"),
@@ -199,6 +216,10 @@ export const createKnowledgeCard = mutation({
     ),
     sourceReference: v.optional(v.string()),
     adminNotes: v.optional(v.string()),
+    showInFaq: v.optional(v.boolean()),
+    faqQuestion: v.optional(v.string()),
+    faqCategory: v.optional(v.string()),
+    faqOrder: v.optional(v.number()),
     isActive: v.boolean(),
     validFrom: v.optional(v.number()),
     validTo: v.optional(v.number()),
@@ -235,6 +256,10 @@ export const createKnowledgeCard = mutation({
       visibility: args.visibility ?? "internal_only",
       sourceReference: args.sourceReference?.trim() || undefined,
       adminNotes: args.adminNotes?.trim() || undefined,
+      showInFaq: args.showInFaq ?? false,
+      faqQuestion: args.faqQuestion?.trim() || undefined,
+      faqCategory: args.faqCategory?.trim() || undefined,
+      faqOrder: args.faqOrder,
       isActive: args.isActive,
       validFrom: args.validFrom,
       validTo: args.validTo,
@@ -260,6 +285,10 @@ export const updateKnowledgeCardMetadata = mutation({
     alwaysInclude: v.optional(v.boolean()),
     isAlert: v.optional(v.boolean()),
     alertLabel: v.optional(v.string()),
+    showInFaq: v.optional(v.boolean()),
+    faqQuestion: v.optional(v.string()),
+    faqCategory: v.optional(v.string()),
+    faqOrder: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     // TODO Auth0: in produzione l’identità admin dovrà provenire da ctx.auth.
@@ -296,6 +325,17 @@ export const updateKnowledgeCardMetadata = mutation({
         args.alertLabel !== undefined
           ? args.alertLabel.trim() || undefined
           : card.alertLabel,
+      showInFaq: args.showInFaq ?? card.showInFaq ?? false,
+      faqQuestion:
+        args.faqQuestion !== undefined
+          ? args.faqQuestion.trim() || undefined
+          : card.faqQuestion,
+      faqCategory:
+        args.faqCategory !== undefined
+          ? args.faqCategory.trim() || undefined
+          : card.faqCategory,
+      faqOrder:
+        args.faqOrder !== undefined ? args.faqOrder : card.faqOrder,
       updatedAt: Date.now(),
     });
     return args.cardId;
@@ -323,6 +363,10 @@ export const createKnowledgeCardVersion = mutation({
     ),
     sourceReference: v.optional(v.string()),
     adminNotes: v.optional(v.string()),
+    showInFaq: v.optional(v.boolean()),
+    faqQuestion: v.optional(v.string()),
+    faqCategory: v.optional(v.string()),
+    faqOrder: v.optional(v.number()),
     isActive: v.boolean(),
     validFrom: v.optional(v.number()),
     validTo: v.optional(v.number()),
@@ -367,6 +411,12 @@ export const createKnowledgeCardVersion = mutation({
       visibility: args.visibility ?? previous.visibility ?? "internal_only",
       sourceReference: args.sourceReference?.trim() || undefined,
       adminNotes: args.adminNotes?.trim() || undefined,
+      showInFaq: args.showInFaq ?? previous.showInFaq ?? false,
+      faqQuestion:
+        args.faqQuestion?.trim() || previous.faqQuestion || undefined,
+      faqCategory:
+        args.faqCategory?.trim() || previous.faqCategory || undefined,
+      faqOrder: args.faqOrder ?? previous.faqOrder,
       isActive: args.isActive,
       validFrom: args.validFrom,
       validTo: args.validTo,

@@ -46,3 +46,10 @@ export {
   PCG_KB_SOURCE_REFERENCE,
 } from "./officialPcgCards2026.ts";
 export type { OfficialKnowledgeCardSeed } from "./officialPcgCards2026.ts";
+
+export {
+  buildFaqEntries,
+  isFaqEligibleCard,
+  searchFaqEntries,
+} from "./faq.ts";
+export type { FaqEntry, FaqCardFields } from "./faq.ts";

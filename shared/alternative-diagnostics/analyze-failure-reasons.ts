@@ -93,6 +93,13 @@ export function analyzeBlockingConstraints(input: {
   >();
 
   for (const signal of input.failedRules) {
+    // La scadenza contratto non è un vincolo per il tempo indeterminato.
+    if (
+      signal.ruleType === "temporary_contract_expiry" &&
+      input.patient.employmentType !== "temporary_employee"
+    ) {
+      continue;
+    }
     const type = mapRuleType(signal.ruleType);
     const entry = byType.get(type) ?? {
       messages: new Set<string>(),

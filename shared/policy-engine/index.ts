@@ -27,6 +27,12 @@ export {
   monthsUntilFinancingEnd,
 } from "./date-utils.ts";
 
+export {
+  calculateEmploymentSeniorityMonths,
+  parseEmploymentStartDate,
+  resolveEmploymentSeniorityMonths,
+} from "./employment-seniority.ts";
+
 export { evaluatePolicyRule } from "./rule-evaluators.ts";
 export type { RuleEvaluationContext } from "./rule-evaluators.ts";
 

@@ -228,6 +228,38 @@ describe("PCG 2026 – lavoro", () => {
     expect(result.status).toBe("verification_required");
     expect(result.verificationReasons.join(" ")).toMatch(/12 mesi/i);
   });
+
+  it("TI senza data/anzianità → verification_required senza messaggio “inferiore ai 12 mesi”", () => {
+    const patient = basePatient({
+      age: 35,
+      employmentType: "permanent_employee",
+      employmentSeniorityMonths: undefined,
+    });
+    const result = evalCompany("Agos", patient, 3000, 12);
+    expect(result.status).toBe("verification_required");
+    const text = result.verificationReasons.join(" ");
+    expect(text).toMatch(/Data di assunzione non indicata/i);
+    expect(text).not.toMatch(/inferiore ai 12 mesi/i);
+  });
+
+  it("TI con anzianità 18 mesi → seniority soddisfatta", () => {
+    const patient = basePatient({
+      age: 35,
+      employmentType: "permanent_employee",
+      employmentSeniorityMonths: 18,
+    });
+    const result = evalCompany("Agos", patient, 3000, 12);
+    expect(
+      result.verificationRules.some(
+        (rule) => rule.ruleType === "minimum_employment_seniority_months",
+      ),
+    ).toBe(false);
+    expect(
+      result.passedRules.some(
+        (rule) => rule.ruleType === "minimum_employment_seniority_months",
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("PCG 2026 – studente / casalinga", () => {

@@ -37,6 +37,10 @@ export type OfficialKnowledgeCardSeed = {
   alertLabel?: string;
   visibility: "patient_safe" | "internal_only";
   sourceReference: string;
+  showInFaq?: boolean;
+  faqQuestion?: string;
+  faqCategory?: string;
+  faqOrder?: number;
 };
 
 export const PCG_KB_SOURCE_REFERENCE = "PCG KB ufficiale 2026";
@@ -85,6 +89,10 @@ Fornire la spiegazione estesa solo se richiesta o utile al caso.`,
     alertLabel: "Agos – non modificare data rata",
     visibility: "internal_only",
     sourceReference: PCG_KB_SOURCE_REFERENCE,
+    showInFaq: true,
+    faqQuestion: "Con Agos posso modificare la data di addebito rata?",
+    faqCategory: "Rate e scadenze",
+    faqOrder: 10,
   },
   {
     seedKey: "db-modifica-data-rata",
@@ -146,6 +154,10 @@ In caso di dubbio verificare sempre se la fattura sia già stata trasmessa autom
     priority: 95,
     visibility: "internal_only",
     sourceReference: PCG_KB_SOURCE_REFERENCE,
+    showInFaq: true,
+    faqQuestion: "Quando devo caricare la fattura Agos?",
+    faqCategory: "Agos",
+    faqOrder: 20,
   },
   {
     seedKey: "agos-pass-liquidazione",
@@ -163,6 +175,10 @@ Non confondere questa procedura con quella prevista per i finanziamenti Agos cla
     priority: 85,
     visibility: "internal_only",
     sourceReference: PCG_KB_SOURCE_REFERENCE,
+    showInFaq: true,
+    faqQuestion: "Come funziona la liquidazione Agos Pass?",
+    faqCategory: "Agos",
+    faqOrder: 25,
   },
   {
     seedKey: "compass-liquidazione",
@@ -195,6 +211,10 @@ Non inventare indirizzi e-mail o documenti specifici se non presenti nella Knowl
     priority: 85,
     visibility: "internal_only",
     sourceReference: PCG_KB_SOURCE_REFERENCE,
+    showInFaq: true,
+    faqQuestion: "Come richiedo la liquidazione Compass?",
+    faqCategory: "Compass",
+    faqOrder: 30,
   },
   {
     seedKey: "db-liquidazione",
@@ -228,6 +248,10 @@ Non inventare indirizzi e-mail o documenti specifici.`,
     priority: 85,
     visibility: "internal_only",
     sourceReference: PCG_KB_SOURCE_REFERENCE,
+    showInFaq: true,
+    faqQuestion: "Come richiedo la liquidazione Deutsche Bank?",
+    faqCategory: "Deutsche Bank",
+    faqOrder: 35,
   },
   {
     seedKey: "fatturazione-finanziamenti",
@@ -393,6 +417,10 @@ La finanziaria può richiedere comunque la documentazione reddituale anche quand
     priority: 90,
     visibility: "internal_only",
     sourceReference: PCG_KB_SOURCE_REFERENCE,
+    showInFaq: true,
+    faqQuestion: "Quando è prevista l’esenzione dal documento di reddito?",
+    faqCategory: "Documenti",
+    faqOrder: 40,
   },
   {
     seedKey: "studenti-casalinghe-documentazione",
@@ -422,6 +450,10 @@ Non usare questa scheda per determinare autonomamente la compatibilità.`,
     priority: 75,
     visibility: "internal_only",
     sourceReference: PCG_KB_SOURCE_REFERENCE,
+    showInFaq: true,
+    faqQuestion: "Quali documenti servono per studente o casalinga?",
+    faqCategory: "Documenti",
+    faqOrder: 45,
   },
   {
     seedKey: "ampliamento-finanziamento",
@@ -581,5 +613,9 @@ Non eseguire autonomamente nuovi calcoli reddituali se RataSmart non fornisce gi
     alertLabel: "Quando valutare un garante",
     visibility: "internal_only",
     sourceReference: PCG_KB_SOURCE_REFERENCE,
+    showInFaq: true,
+    faqQuestion: "Posso utilizzare un garante?",
+    faqCategory: "Garanti",
+    faqOrder: 50,
   },
 ];

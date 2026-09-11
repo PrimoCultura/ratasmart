@@ -351,6 +351,116 @@ describe("resolveComparisonDiagnostics – UI wiring", () => {
       }),
     ).toBeNull();
   });
+
+  it("D) tempo indeterminato → diagnostica NON parla di scadenza contratto", () => {
+    const diagnostics = resolveComparisonDiagnostics({
+      hasCompatibleSolutions: false,
+      verificationRequiredCount: 2,
+      calculationDate,
+      requestedAmount: 4000,
+      selectedDurationMonths: 24,
+      firstInstallmentDelayDays: 30,
+      patient: {
+        age: 40,
+        employmentType: "permanent_employee",
+        isNonEuCitizen: false,
+        employmentSeniorityMonths: 6,
+      },
+      solutions: [
+        {
+          resultGroup: "verification_required",
+          companyShortName: "Agos",
+          compatibilitySnapshot: {
+            verificationRules: [
+              {
+                ruleType: "minimum_employment_seniority_months",
+                message:
+                  "L’anzianità lavorativa indicata è inferiore ai 12 mesi previsti dalle indicazioni operative: verificare con la finanziaria.",
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    expect(diagnostics?.primaryConstraint?.type).not.toBe(
+      "temporary_contract_expiry",
+    );
+    expect(
+      diagnostics?.blockingConstraints.some(
+        (item) => item.type === "temporary_contract_expiry",
+      ),
+    ).toBe(false);
+    expect(
+      diagnostics?.nearestAlternatives.some((item) => item.type === "renew_contract"),
+    ).toBe(false);
+    expect(diagnostics?.verificationRequiredCount).toBe(2);
+  });
+
+  it("E) TD con contractExpiry blocker → diagnostica contratto presente", () => {
+    const diagnostics = resolveComparisonDiagnostics({
+      hasCompatibleSolutions: false,
+      calculationDate,
+      requestedAmount: 4000,
+      selectedDurationMonths: 24,
+      firstInstallmentDelayDays: 30,
+      patient: {
+        age: 60,
+        employmentType: "temporary_employee",
+        temporaryContractExpiry: contractExpiry,
+        isNonEuCitizen: false,
+      },
+      solutions: [
+        {
+          resultGroup: "not_compatible",
+          companyShortName: "Agos",
+          compatibilitySnapshot: {
+            failedRules: [
+              {
+                ruleType: "temporary_contract_expiry",
+                message: "Contratto insufficiente",
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(diagnostics?.primaryConstraint?.type).toBe(
+      "temporary_contract_expiry",
+    );
+  });
+
+  it("F) compatible 0 + verification > 0 → verificationRequiredCount valorizzato", () => {
+    const diagnostics = resolveComparisonDiagnostics({
+      hasCompatibleSolutions: false,
+      verificationRequiredCount: 3,
+      calculationDate,
+      requestedAmount: 2000,
+      selectedDurationMonths: 12,
+      firstInstallmentDelayDays: 30,
+      patient: {
+        age: 40,
+        employmentType: "permanent_employee",
+        isNonEuCitizen: false,
+      },
+      solutions: [
+        {
+          resultGroup: "verification_required",
+          companyShortName: "Agos",
+          compatibilitySnapshot: {
+            verificationRules: [
+              {
+                ruleType: "minimum_employment_seniority_months",
+                message: "Data di assunzione non indicata",
+              },
+            ],
+          },
+        },
+      ],
+    });
+    expect(diagnostics?.hasCompatibleSolutions).toBe(false);
+    expect(diagnostics?.verificationRequiredCount).toBe(3);
+  });
 });
 
 describe("duration options UI", () => {

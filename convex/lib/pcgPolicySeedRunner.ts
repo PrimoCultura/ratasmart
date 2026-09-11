@@ -253,6 +253,10 @@ function cardMatchesSeedPayload(
     (card.alertLabel ?? undefined) === (seed.alertLabel ?? undefined) &&
     (card.visibility ?? "internal_only") === seed.visibility &&
     (card.sourceReference ?? undefined) === seed.sourceReference &&
+    (card.showInFaq ?? false) === (seed.showInFaq ?? false) &&
+    (card.faqQuestion ?? undefined) === (seed.faqQuestion ?? undefined) &&
+    (card.faqCategory ?? undefined) === (seed.faqCategory ?? undefined) &&
+    (card.faqOrder ?? undefined) === (seed.faqOrder ?? undefined) &&
     card.isActive === true
   );
 }
@@ -363,6 +367,10 @@ export async function upsertPcgKnowledgeCards2026(
         visibility: seed.visibility,
         sourceReference: seed.sourceReference,
         adminNotes: `seedKey=${seed.seedKey}`,
+        showInFaq: seed.showInFaq ?? false,
+        faqQuestion: seed.faqQuestion,
+        faqCategory: seed.faqCategory,
+        faqOrder: seed.faqOrder,
         isActive: true,
         version: existing.version + 1,
         supersedesCardId: existing._id,
@@ -387,6 +395,10 @@ export async function upsertPcgKnowledgeCards2026(
         visibility: seed.visibility,
         sourceReference: seed.sourceReference,
         adminNotes: `seedKey=${seed.seedKey}`,
+        showInFaq: seed.showInFaq ?? false,
+        faqQuestion: seed.faqQuestion,
+        faqCategory: seed.faqCategory,
+        faqOrder: seed.faqOrder,
         isActive: true,
         version: 1,
         createdByUserId: actorUserId,

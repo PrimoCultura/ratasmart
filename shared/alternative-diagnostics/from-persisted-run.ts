@@ -1,5 +1,6 @@
 import { calculateFinancingEndDate } from "../policy-engine/date-utils.ts";
 import type { PatientFinancialProfile } from "../policy-engine/types.ts";
+import { evaluateIncomeDocumentRequirements } from "../documentation-requirements/index.ts";
 import {
   analyzeBlockingConstraints,
   formatItDateExport,
@@ -20,6 +21,7 @@ export type PersistedSolutionForDiagnostics = {
     verificationRules?: Array<{ ruleType: string; message?: string }>;
   };
   technicalExclusionReasons?: string[];
+  openingFeeAmount?: number;
 };
 
 /**
@@ -29,6 +31,7 @@ export type PersistedSolutionForDiagnostics = {
  */
 export function buildDiagnosticsFromPersistedComparison(input: {
   hasCompatibleSolutions: boolean;
+  verificationRequiredCount?: number;
   calculationDate: number;
   requestedAmount: number;
   selectedDurationMonths: number;
@@ -36,13 +39,35 @@ export function buildDiagnosticsFromPersistedComparison(input: {
   patient: PatientFinancialProfile;
   solutions: PersistedSolutionForDiagnostics[];
 }): ComparisonDiagnostics {
+  const verificationRequiredCount =
+    input.verificationRequiredCount ??
+    input.solutions.filter(
+      (item) => item.resultGroup === "verification_required",
+    ).length;
+
+  const financedFees = input.solutions.reduce((max, solution) => {
+    const fee = solution.openingFeeAmount;
+    if (typeof fee === "number" && Number.isFinite(fee) && fee > max) {
+      return fee;
+    }
+    return max;
+  }, 0);
+
+  const documentationRequirements = evaluateIncomeDocumentRequirements({
+    requestedAmount: input.requestedAmount,
+    financedFees,
+    isNonEuCitizen: input.patient.isNonEuCitizen,
+  });
+
   if (input.hasCompatibleSolutions) {
     return {
       version: ALTERNATIVE_DIAGNOSTICS_VERSION,
       hasCompatibleSolutions: true,
+      verificationRequiredCount,
       blockingConstraints: [],
       nearestAlternatives: [],
       informationalSuggestions: [],
+      documentationRequirements,
     };
   }
 
@@ -112,7 +137,6 @@ export function buildDiagnosticsFromPersistedComparison(input: {
     });
   }
 
-  // Condizionale: riduzione importo solo dopo risoluzione vincoli temporali
   if (
     blockingConstraints.some(
       (item) =>
@@ -145,10 +169,12 @@ export function buildDiagnosticsFromPersistedComparison(input: {
   return {
     version: ALTERNATIVE_DIAGNOSTICS_VERSION,
     hasCompatibleSolutions: false,
+    verificationRequiredCount,
     blockingConstraints,
     primaryConstraint,
     nearestAlternatives,
     informationalSuggestions,
+    documentationRequirements,
   };
 }
 
@@ -158,6 +184,7 @@ export function buildDiagnosticsFromPersistedComparison(input: {
 export function resolveComparisonDiagnostics(input: {
   persistedDiagnostics?: ComparisonDiagnostics | null;
   hasCompatibleSolutions: boolean;
+  verificationRequiredCount?: number;
   calculationDate: number;
   requestedAmount: number;
   selectedDurationMonths: number;
@@ -173,11 +200,21 @@ export function resolveComparisonDiagnostics(input: {
     input.persistedDiagnostics &&
     input.persistedDiagnostics.hasCompatibleSolutions === false
   ) {
-    return input.persistedDiagnostics;
+    const verificationRequiredCount =
+      input.persistedDiagnostics.verificationRequiredCount ??
+      input.verificationRequiredCount ??
+      input.solutions.filter(
+        (item) => item.resultGroup === "verification_required",
+      ).length;
+    return {
+      ...input.persistedDiagnostics,
+      verificationRequiredCount,
+    };
   }
 
   return buildDiagnosticsFromPersistedComparison({
     hasCompatibleSolutions: false,
+    verificationRequiredCount: input.verificationRequiredCount,
     calculationDate: input.calculationDate,
     requestedAmount: input.requestedAmount,
     selectedDurationMonths: input.selectedDurationMonths,

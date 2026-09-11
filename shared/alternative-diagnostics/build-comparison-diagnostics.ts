@@ -4,6 +4,7 @@ import type {
   RuntimeFinancialSolution,
   RuntimePolicyRule,
 } from "../policy-engine/types.ts";
+import { evaluateIncomeDocumentRequirements } from "../documentation-requirements/index.ts";
 import {
   analyzeBlockingConstraints,
   type FailedRuleSignal,
@@ -57,6 +58,19 @@ function collectFailedRules(
   return signals;
 }
 
+function resolveFinancedFees(
+  solutions: RuntimeFinancialSolution[],
+): number {
+  let maxFee = 0;
+  for (const solution of solutions) {
+    const fee = solution.calculation?.openingFeeAmount;
+    if (typeof fee === "number" && Number.isFinite(fee) && fee > maxFee) {
+      maxFee = fee;
+    }
+  }
+  return maxFee;
+}
+
 /**
  * Costruisce la diagnostica deterministica del confronto.
  */
@@ -64,14 +78,26 @@ export function buildComparisonDiagnostics(
   input: DiagnosticsBuildInput,
 ): ComparisonDiagnostics {
   const hasCompatibleSolutions = input.compatibleSolutions.length > 0;
+  const allSolutions = [
+    ...input.compatibleSolutions,
+    ...input.verificationRequiredSolutions,
+    ...input.incompatibleSolutions,
+  ];
+  const documentationRequirements = evaluateIncomeDocumentRequirements({
+    requestedAmount: input.requestedAmount,
+    financedFees: resolveFinancedFees(allSolutions),
+    isNonEuCitizen: input.patient.isNonEuCitizen,
+  });
 
   if (hasCompatibleSolutions) {
     return {
       version: ALTERNATIVE_DIAGNOSTICS_VERSION,
       hasCompatibleSolutions: true,
+      verificationRequiredCount: input.verificationRequiredSolutions.length,
       blockingConstraints: [],
       nearestAlternatives: [],
       informationalSuggestions: [],
+      documentationRequirements,
     };
   }
 
@@ -99,8 +125,6 @@ export function buildComparisonDiagnostics(
     rulesByTableId: input.rulesByTableId,
   });
 
-  // Se nessuna durata tecnicamente ammessa rispetta il vincolo temporale
-  // per l'importo richiesto, non proporre alternative economiche illusorie.
   const temporalBlocked = noDurationFitsTemporalWindow({
     requestedAmount: input.requestedAmount,
     delayDays: input.firstInstallmentDelayDays,
@@ -110,8 +134,6 @@ export function buildComparisonDiagnostics(
   });
 
   if (temporalBlocked) {
-    // Stesso importo: nessuna durata entra nella finestra.
-    // Mantieni solo alternative a importo ridotto e i rinnovi.
     nearestAlternatives = nearestAlternatives.filter(
       (item) =>
         item.type === "renew_contract" ||
@@ -121,7 +143,6 @@ export function buildComparisonDiagnostics(
     );
   }
 
-  // Limita i rinnovi alle durate più corte utili (max 2)
   const renewals = nearestAlternatives
     .filter(
       (item) =>
@@ -152,9 +173,11 @@ export function buildComparisonDiagnostics(
   return {
     version: ALTERNATIVE_DIAGNOSTICS_VERSION,
     hasCompatibleSolutions: false,
+    verificationRequiredCount: input.verificationRequiredSolutions.length,
     blockingConstraints,
     primaryConstraint,
     nearestAlternatives,
     informationalSuggestions,
+    documentationRequirements,
   };
 }
