@@ -187,7 +187,7 @@ export default defineSchema({
     targetInstallment: v.optional(v.number()),
     selectedSolutionLabel: v.optional(v.string()),
     patientAge: v.optional(v.number()),
-    /** Data di nascita ISO `YYYY-MM-DD` (necessaria per età Senior SMV precisa). */
+    /** Fonte primaria età (ISO `YYYY-MM-DD`). Required sulle nuove simulazioni. */
     patientBirthDate: v.optional(v.string()),
     employmentType: v.optional(employmentType),
     temporaryContractExpiry: v.optional(v.number()),
@@ -230,6 +230,8 @@ export default defineSchema({
       firstName: v.string(),
       lastName: v.string(),
       age: v.number(),
+      birthDate: v.optional(v.string()),
+      ageAtReferenceDate: v.optional(v.number()),
       employmentType,
       temporaryContractExpiry: v.optional(v.number()),
       isNonEuCitizen: v.boolean(),

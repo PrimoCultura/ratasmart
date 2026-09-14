@@ -1,6 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireActiveUser } from "./lib/authHelpers";
+import {
+  calculateAgeAtDate,
+  isBirthDateNotInFuture,
+  parseIsoDateOnly,
+} from "../shared/policy-engine/patient-age";
 
 /**
  * SECURITY NOTE (fase Auth0):
@@ -37,7 +42,8 @@ function validatePatientFields(args: {
   patientLastName: string;
   requestedAmount: number;
   targetInstallment?: number;
-  patientAge: number;
+  patientAge?: number;
+  patientBirthDate?: string;
   employmentType:
     | "permanent_employee"
     | "temporary_employee"
@@ -55,13 +61,29 @@ function validatePatientFields(args: {
 }) {
   const patientFirstName = args.patientFirstName.trim();
   const patientLastName = args.patientLastName.trim();
+  const now = Date.now();
 
   if (!patientFirstName || !patientLastName) {
     throw new Error("Nome e cognome del paziente sono obbligatori.");
   }
 
-  if (!Number.isInteger(args.patientAge) || args.patientAge < 18) {
-    throw new Error("L'età deve essere un intero maggiore o uguale a 18.");
+  const birthDate = args.patientBirthDate?.trim();
+  if (!birthDate) {
+    throw new Error(
+      "La data di nascita è obbligatoria per creare o aggiornare una simulazione.",
+    );
+  }
+  if (!parseIsoDateOnly(birthDate)) {
+    throw new Error("Data di nascita non valida.");
+  }
+  if (!isBirthDateNotInFuture(birthDate, now)) {
+    throw new Error("La data di nascita non può essere nel futuro.");
+  }
+  const derivedAge = calculateAgeAtDate(birthDate, now);
+  if (derivedAge === null || derivedAge < 18) {
+    throw new Error(
+      "Il paziente deve essere maggiorenne alla data di riferimento.",
+    );
   }
 
   if (args.requestedAmount <= 0) {
@@ -89,8 +111,6 @@ function validatePatientFields(args: {
     throw new Error("La prima rata preferita deve essere 30, 60 o 90 giorni.");
   }
 
-  const now = Date.now();
-
   if (args.employmentType === "temporary_employee") {
     if (args.temporaryContractExpiry === undefined) {
       throw new Error("La scadenza del contratto determinato è obbligatoria.");
@@ -109,7 +129,12 @@ function validatePatientFields(args: {
     }
   }
 
-  return { patientFirstName, patientLastName };
+  return {
+    patientFirstName,
+    patientLastName,
+    patientBirthDate: birthDate,
+    patientAge: derivedAge,
+  };
 }
 
 export const listMySimulations = query({
@@ -261,7 +286,7 @@ export const updateSimulationPatientData = mutation({
     requestedAmount: v.number(),
     targetInstallment: v.optional(v.number()),
     patientAge: v.number(),
-    patientBirthDate: v.optional(v.string()),
+    patientBirthDate: v.string(),
     employmentType: employmentTypeValidator,
     temporaryContractExpiry: v.optional(v.number()),
     isNonEuCitizen: v.boolean(),
@@ -280,7 +305,12 @@ export const updateSimulationPatientData = mutation({
       throw new Error("Non autorizzato.");
     }
 
-    const { patientFirstName, patientLastName } = validatePatientFields(args);
+    const {
+      patientFirstName,
+      patientLastName,
+      patientBirthDate,
+      patientAge,
+    } = validatePatientFields(args);
     const now = Date.now();
 
     const storesEmploymentStart =
@@ -315,8 +345,8 @@ export const updateSimulationPatientData = mutation({
         network: args.network,
         requestedAmount: args.requestedAmount,
         targetInstallment: args.targetInstallment,
-        patientAge: args.patientAge,
-        patientBirthDate: args.patientBirthDate ?? simulation.patientBirthDate,
+        patientAge,
+        patientBirthDate,
         employmentType: args.employmentType,
         temporaryContractExpiry:
           args.employmentType === "temporary_employee"
@@ -369,8 +399,8 @@ export const updateSimulationPatientData = mutation({
       network: args.network,
       requestedAmount: args.requestedAmount,
       targetInstallment: args.targetInstallment,
-      patientAge: args.patientAge,
-      patientBirthDate: args.patientBirthDate,
+      patientAge,
+      patientBirthDate,
       employmentType: args.employmentType,
       temporaryContractExpiry:
         args.employmentType === "temporary_employee"

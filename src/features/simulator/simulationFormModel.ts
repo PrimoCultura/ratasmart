@@ -5,11 +5,16 @@ import {
   type PatientSimulationInput,
 } from "@/lib/validation/schemas";
 import { calculateEmploymentSeniorityMonths } from "../../../shared/policy-engine/employment-seniority";
+import {
+  calculateAgeAtDate,
+  isBirthDateNotInFuture,
+} from "../../../shared/policy-engine/patient-age";
 
 export type SimulationFormValues = {
   patientFirstName: string;
   patientLastName: string;
   network: PatientSimulationInput["network"];
+  /** Solo display legacy / read-only derivato; non è input CM. */
   patientAge: string;
   patientBirthDate: string;
   employmentType: PatientSimulationInput["employmentType"] | "";
@@ -70,6 +75,16 @@ export function formatAmountInput(value?: number): string {
   });
 }
 
+export function isLegacySimulationMissingBirthDate(
+  simulation: Pick<Doc<"simulations">, "patientAge" | "patientBirthDate">,
+): boolean {
+  return (
+    !simulation.patientBirthDate &&
+    simulation.patientAge !== undefined &&
+    Number.isFinite(simulation.patientAge)
+  );
+}
+
 export function simulationToFormValues(
   simulation: Doc<"simulations">,
 ): SimulationFormValues {
@@ -121,9 +136,17 @@ export function getSimulationFormVisibility(values: SimulationFormValues) {
   };
 }
 
+export function getDerivedAgeDisplay(
+  birthDateIso: string,
+  referenceDate: number = Date.now(),
+): number | null {
+  if (!birthDateIso.trim()) return null;
+  return calculateAgeAtDate(birthDateIso.trim(), referenceDate);
+}
+
 /**
  * Converte i valori UI nel payload validato per Convex.
- * Stessa logica per creazione e modifica.
+ * birthDate required; age derivata (non inserita dal CM).
  */
 export function parseSimulationFormValues(
   values: SimulationFormValues,
@@ -131,6 +154,34 @@ export function parseSimulationFormValues(
 ):
   | { success: true; data: PatientSimulationInput }
   | { success: false; message: string } {
+  const birthDate = values.patientBirthDate.trim();
+  if (!birthDate) {
+    return {
+      success: false,
+      message:
+        "La data di nascita è obbligatoria. Se la simulazione è legacy, completala prima di salvare o ricalcolare.",
+    };
+  }
+  if (!isBirthDateNotInFuture(birthDate, referenceDate)) {
+    return {
+      success: false,
+      message: "La data di nascita non può essere nel futuro.",
+    };
+  }
+  const derivedAge = calculateAgeAtDate(birthDate, referenceDate);
+  if (derivedAge === null) {
+    return {
+      success: false,
+      message: "Data di nascita non valida.",
+    };
+  }
+  if (derivedAge < 18) {
+    return {
+      success: false,
+      message: "Il paziente deve essere maggiorenne alla data di riferimento.",
+    };
+  }
+
   const requestedAmount = parseItalianAmount(values.requestedAmount);
   const targetInstallmentRaw = values.targetInstallment.trim();
   const targetInstallment = targetInstallmentRaw
@@ -158,10 +209,8 @@ export function parseSimulationFormValues(
     patientFirstName: values.patientFirstName,
     patientLastName: values.patientLastName,
     network: values.network,
-    patientAge: Number(values.patientAge),
-    patientBirthDate: values.patientBirthDate.trim()
-      ? values.patientBirthDate.trim()
-      : undefined,
+    patientBirthDate: birthDate,
+    patientAge: derivedAge,
     employmentType: values.employmentType || undefined,
     temporaryContractExpiry: parseDateInputToMs(values.temporaryContractExpiry),
     isNonEuCitizen: values.isNonEuCitizen === "yes",
@@ -214,23 +263,27 @@ export function mergeSimulationPatientUpdate(input: {
     hasResidencePermitRenewalReceiptOnly?: boolean;
     hasGuarantor?: boolean;
     patientRequestsZeroInterest?: boolean;
+    patientBirthDate?: string;
     targetInstallment?: number;
     requestedDurationMonths?: number;
     preferredFirstInstallmentDelayDays?: 30 | 60 | 90;
   }>;
-  update: PatientSimulationInput;
-}): PatientSimulationInput & {
-  employmentStartDate?: string;
-  employmentSeniorityMonths?: number;
-} {
+  update: PatientSimulationInput & {
+    employmentStartDate?: string;
+    employmentSeniorityMonths?: number;
+  };
+}) {
   const storesEmploymentStart =
     input.update.employmentType === "permanent_employee" ||
     input.update.employmentType === "temporary_employee";
 
   return {
     ...input.update,
+    patientBirthDate: input.update.patientBirthDate,
+    patientAge: input.update.patientAge,
     employmentStartDate: storesEmploymentStart
-      ? (input.update.employmentStartDate ?? input.existing.employmentStartDate)
+      ? (input.update.employmentStartDate ??
+        input.existing.employmentStartDate)
       : undefined,
     employmentSeniorityMonths: storesEmploymentStart
       ? (input.update.employmentSeniorityMonths ??
@@ -249,10 +302,15 @@ export function mergeSimulationPatientUpdate(input: {
       ? (input.update.hasResidencePermitRenewalReceiptOnly ??
         input.existing.hasResidencePermitRenewalReceiptOnly)
       : undefined,
-    hasGuarantor: input.update.hasGuarantor ?? input.existing.hasGuarantor,
+    hasGuarantor:
+      input.update.hasGuarantor !== undefined
+        ? input.update.hasGuarantor
+        : input.existing.hasGuarantor,
     patientRequestsZeroInterest:
       input.update.patientRequestsZeroInterest ??
-      input.existing.patientRequestsZeroInterest ??
-      false,
+      input.existing.patientRequestsZeroInterest,
+    preferredFirstInstallmentDelayDays:
+      input.update.preferredFirstInstallmentDelayDays ??
+      input.existing.preferredFirstInstallmentDelayDays,
   };
 }

@@ -33,6 +33,26 @@ export {
   resolveEmploymentSeniorityMonths,
 } from "./employment-seniority.ts";
 
+export {
+  calculateAgeAtDate,
+  isAdultAtDate,
+  isBirthDateNotInFuture,
+  parseIsoDateOnly,
+  resolvePatientAge,
+} from "./patient-age.ts";
+export type { ResolvedPatientAge } from "./patient-age.ts";
+
+export {
+  ageYmdAt,
+  compareAgeYmd,
+  evaluateSmvSeniorAge,
+  isAgeWithinCalendarRange,
+  isAgeYmdInSmvRange,
+  SMV_MAX_AGE,
+  SMV_MIN_AGE,
+} from "./smv-senior-age.ts";
+export type { AgeYmd, SmvAgeEvaluation } from "./smv-senior-age.ts";
+
 export { PCG_2026_POLICY_CONSTANTS } from "./pcg-2026-constants.ts";
 export type { Pcg2026PolicyConstants } from "./pcg-2026-constants.ts";
 

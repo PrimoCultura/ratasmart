@@ -7,6 +7,7 @@ import { buildComparisonResult } from "../shared/policy-engine/index";
 import {
   resolveEmploymentSeniorityMonths,
 } from "../shared/policy-engine/employment-seniority";
+import { resolvePatientAge } from "../shared/policy-engine/patient-age";
 import type {
   PatientFinancialProfile,
   SimulationComparisonResult,
@@ -80,13 +81,18 @@ export const calculateSimulationComparison = action({
       const simulation = bundle.simulation;
 
       if (
-        simulation.patientAge === undefined ||
         simulation.employmentType === undefined ||
         simulation.isNonEuCitizen === undefined ||
         simulation.requestedAmount === undefined
       ) {
         throw new Error(
           "Simulazione incompleta: completare i dati paziente obbligatori.",
+        );
+      }
+
+      if (!simulation.patientBirthDate?.trim()) {
+        throw new Error(
+          "Completare la data di nascita prima di calcolare o ricalcolare. Le simulazioni legacy richiedono la data di nascita per un nuovo confronto.",
         );
       }
 
@@ -98,6 +104,17 @@ export const calculateSimulationComparison = action({
 
       const calculationDate = bundle.now;
 
+      const resolvedAge = resolvePatientAge({
+        birthDate: simulation.patientBirthDate,
+        legacyAge: simulation.patientAge,
+        referenceDate: calculationDate,
+      });
+      if (!resolvedAge) {
+        throw new Error(
+          "Impossibile determinare l'età dalla data di nascita alla data di riferimento.",
+        );
+      }
+
       const employmentSeniorityMonths = resolveEmploymentSeniorityMonths({
         employmentStartDate: simulation.employmentStartDate,
         employmentSeniorityMonths: simulation.employmentSeniorityMonths,
@@ -105,8 +122,8 @@ export const calculateSimulationComparison = action({
       });
 
       const patient: PatientFinancialProfile = {
-        age: simulation.patientAge,
-        birthDate: simulation.patientBirthDate,
+        age: resolvedAge.age,
+        birthDate: resolvedAge.birthDate ?? simulation.patientBirthDate,
         employmentType: simulation.employmentType,
         temporaryContractExpiry: simulation.temporaryContractExpiry,
         isNonEuCitizen: simulation.isNonEuCitizen,
@@ -212,7 +229,9 @@ export const calculateSimulationComparison = action({
           patientSnapshot: stripUndefinedDeep({
             firstName: simulation.patientFirstName,
             lastName: simulation.patientLastName,
-            age: simulation.patientAge,
+            age: resolvedAge.age,
+            birthDate: simulation.patientBirthDate,
+            ageAtReferenceDate: resolvedAge.ageAtReferenceDate ?? resolvedAge.age,
             employmentType: simulation.employmentType,
             temporaryContractExpiry: simulation.temporaryContractExpiry,
             isNonEuCitizen: simulation.isNonEuCitizen,

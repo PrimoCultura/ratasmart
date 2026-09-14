@@ -41,7 +41,12 @@ export type ComparisonStatus =
 export type PatientSnapshot = {
   firstName: string;
   lastName: string;
+  /** Anni compiuti (derivati o legacy). */
   age: number;
+  /** Fonte primaria quando presente. */
+  birthDate?: string;
+  /** Età derivata alla calculationDate del run. */
+  ageAtReferenceDate?: number;
   employmentType: EmploymentTypeSnapshot;
   temporaryContractExpiry?: number;
   isNonEuCitizen: boolean;

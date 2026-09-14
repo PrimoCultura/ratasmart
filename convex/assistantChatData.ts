@@ -167,7 +167,10 @@ export const getVirtualMarcoTurnBundle = internalQuery({
           selectedDurationMonths: run.selectedDurationMonths,
           selectedFirstInstallmentDelayDays: run.selectedFirstInstallmentDelayDays,
           patient: {
-            age: run.patientSnapshot.age,
+            age: run.patientSnapshot.ageAtReferenceDate ?? run.patientSnapshot.age,
+            birthDate: run.patientSnapshot.birthDate,
+            ageAtReferenceDate:
+              run.patientSnapshot.ageAtReferenceDate ?? run.patientSnapshot.age,
             employmentType: run.patientSnapshot.employmentType,
             temporaryContractExpiry: run.patientSnapshot.temporaryContractExpiry,
             isNonEuCitizen: run.patientSnapshot.isNonEuCitizen,

@@ -24,6 +24,7 @@ import { ProposedSolutionBadge } from "@/features/simulator/history/ProposedSolu
 import { SimulationComparisonWorkspace } from "@/features/simulator/history/SimulationComparisonWorkspace";
 import { SimulationFormFields } from "@/features/simulator/SimulationFormFields";
 import {
+  isLegacySimulationMissingBirthDate,
   parseSimulationFormValues,
   SIMULATION_FORM_DEFAULT_VALUES,
   simulationToFormValues,
@@ -185,6 +186,9 @@ export function SimulationDetailPage() {
                 idPrefix="edit"
                 submitLabel={isSaving ? "Salvataggio…" : "Salva dati"}
                 isSubmitting={isSaving}
+                isLegacyMissingBirthDate={isLegacySimulationMissingBirthDate(
+                  simulation,
+                )}
                 onCancel={() => {
                   form.reset(simulationToFormValues(simulation));
                   setEditing(false);

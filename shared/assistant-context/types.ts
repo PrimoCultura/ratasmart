@@ -9,7 +9,12 @@ export type HistoryMessage = {
 };
 
 export type AnonymizedPatientProfile = {
+  /** Anni compiuti alla referenceDate (derivati o legacy). */
   age?: number;
+  /** Fonte primaria quando presente. */
+  birthDate?: string;
+  /** Età derivata già determinata dal sistema (non ricalcolare). */
+  ageAtReferenceDate?: number;
   employmentType?: string;
   temporaryContractExpiry?: number;
   isNonEuCitizen?: boolean;

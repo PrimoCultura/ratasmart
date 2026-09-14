@@ -53,17 +53,20 @@ export const patientSimulationSchema = z
     network: z.enum(NETWORKS, {
       required_error: "Seleziona la rete",
     }),
+    patientBirthDate: z
+      .string({
+        required_error: "La data di nascita è obbligatoria",
+      })
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Data di nascita non valida"),
+    /** Derivata da patientBirthDate + referenceDate; non inserita dal CM. */
     patientAge: z
       .number({
-        required_error: "L'età è obbligatoria",
-        invalid_type_error: "Inserisci un'età valida",
+        required_error: "Età non determinabile dalla data di nascita",
+        invalid_type_error: "Età non valida",
       })
       .int("L'età deve essere un numero intero")
-      .gte(18, "L'età deve essere almeno 18 anni"),
-    patientBirthDate: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, "Data di nascita non valida")
-      .optional(),
+      .gte(18, "Il paziente deve essere maggiorenne"),
     employmentType: z.enum(EMPLOYMENT_TYPES, {
       required_error: "Seleziona la condizione lavorativa",
     }),

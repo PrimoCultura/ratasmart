@@ -16,6 +16,7 @@ import {
   EMPLOYMENT_TYPES,
 } from "@/lib/constants/financial";
 import {
+  getDerivedAgeDisplay,
   getSimulationFormVisibility,
   type SimulationFormValues,
 } from "./simulationFormModel";
@@ -26,6 +27,8 @@ type SimulationFormFieldsProps = {
   isSubmitting?: boolean;
   onCancel?: () => void;
   idPrefix?: string;
+  /** Simulazione legacy: age presente, birthDate assente. */
+  isLegacyMissingBirthDate?: boolean;
 };
 
 export function SimulationFormFields({
@@ -34,6 +37,7 @@ export function SimulationFormFields({
   isSubmitting = false,
   onCancel,
   idPrefix = "",
+  isLegacyMissingBirthDate = false,
 }: SimulationFormFieldsProps) {
   const values = form.watch();
   const {
@@ -44,6 +48,9 @@ export function SimulationFormFields({
   } = getSimulationFormVisibility(values);
 
   const id = (name: string) => (idPrefix ? `${idPrefix}-${name}` : name);
+  const derivedAge = getDerivedAgeDisplay(values.patientBirthDate);
+  const showLegacyBirthDatePrompt =
+    isLegacyMissingBirthDate && !values.patientBirthDate.trim();
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -61,23 +68,25 @@ export function SimulationFormFields({
           {...form.register("patientLastName")}
         />
       </div>
-      <div className="space-y-2">
-        <Label htmlFor={id("patientAge")}>Età (anni compiuti)</Label>
-        <Input
-          id={id("patientAge")}
-          inputMode="numeric"
-          {...form.register("patientAge")}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor={id("patientBirthDate")}>
-          Data di nascita (opzionale, Senior SMV)
-        </Label>
+      <div className="space-y-2 sm:col-span-2">
+        <Label htmlFor={id("patientBirthDate")}>Data di nascita</Label>
         <Input
           id={id("patientBirthDate")}
           type="date"
+          required
           {...form.register("patientBirthDate")}
         />
+        {showLegacyBirthDatePrompt ? (
+          <p className="text-xs text-muted-foreground" data-testid="legacy-birthdate-hint">
+            Data di nascita: da completare. Questa simulazione è stata creata
+            prima dell&apos;introduzione della data di nascita. Inseriscila per
+            poter effettuare un nuovo ricalcolo.
+          </p>
+        ) : derivedAge !== null ? (
+          <p className="text-xs text-muted-foreground" data-testid="derived-age-display">
+            Età: {derivedAge} anni
+          </p>
+        ) : null}
       </div>
       <div className="space-y-2">
         <Label>Rete</Label>

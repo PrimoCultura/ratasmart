@@ -255,7 +255,7 @@ describe("DES/Paoleschi 2026 financial config", () => {
     expect(economics.maximumAmount).toBe(4870);
   });
 
-  it("SMV età: birthDate precisa e età intera conservativa", () => {
+  it("SMV età: richiede birthDate; senza → verification_required", () => {
     const asOf = Date.UTC(2026, 5, 15);
     expect(
       evaluateSmvSeniorAge({
@@ -276,10 +276,10 @@ describe("DES/Paoleschi 2026 financial config", () => {
     ).toBe("verification_required");
     expect(
       evaluateSmvSeniorAge({ age: 80, calculationDate: asOf }).status,
-    ).toBe("passed");
+    ).toBe("verification_required");
     expect(
       evaluateSmvSeniorAge({ age: 86, calculationDate: asOf }).status,
-    ).toBe("failed");
+    ).toBe("verification_required");
   });
 
   it("availability DES/Paoleschi", () => {

@@ -128,13 +128,18 @@ export function buildAnonymizedSimulationContext(
         patient.employmentType)
       : "n/d";
 
+  const ageDisplay =
+    patient.ageAtReferenceDate ?? patient.age ?? "n/d";
   const header = [
     "CONTESTO DELLA SIMULAZIONE",
     "",
     `Rete: ${input.network}`,
-    `Età: ${patient.age ?? "n/d"}`,
-    `Condizione lavorativa: ${employment}`,
+    `Età: ${ageDisplay}${typeof ageDisplay === "number" ? " anni" : ""}`,
   ];
+  if (patient.birthDate) {
+    header.push(`Data di nascita: ${patient.birthDate}`);
+  }
+  header.push(`Condizione lavorativa: ${employment}`);
 
   const contractExpiry = formatDate(patient.temporaryContractExpiry);
   if (contractExpiry) {

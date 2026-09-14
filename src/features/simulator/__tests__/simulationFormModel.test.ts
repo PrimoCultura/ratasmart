@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getSimulationFormVisibility,
+  isLegacySimulationMissingBirthDate,
   mergeSimulationPatientUpdate,
   parseSimulationFormValues,
   SIMULATION_FORM_DEFAULT_VALUES,
@@ -24,6 +25,7 @@ function baseSimulation(
     comparisonStatus: "calculated",
     requestedAmount: 4000,
     patientAge: 55,
+    patientBirthDate: "1971-03-15",
     employmentType: "permanent_employee",
     isNonEuCitizen: false,
     employmentStartDate: "2024-01-01",
@@ -37,11 +39,56 @@ function baseSimulation(
 }
 
 describe("simulationFormModel shared create/edit", () => {
+  it("F) form create: birthDate required", () => {
+    const formValues: SimulationFormValues = {
+      ...SIMULATION_FORM_DEFAULT_VALUES,
+      patientFirstName: "Mario",
+      patientLastName: "Rossi",
+      network: "PCG",
+      patientBirthDate: "",
+      employmentType: "permanent_employee",
+      employmentStartDate: "2020-01-01",
+      isNonEuCitizen: "no",
+      requestedAmount: "4.000,00",
+      preferredFirstInstallmentDelayDays: "30",
+    };
+    const parsed = parseSimulationFormValues(
+      formValues,
+      new Date("2026-09-14T12:00:00").getTime(),
+    );
+    expect(parsed.success).toBe(false);
+    if (parsed.success) return;
+    expect(parsed.message).toMatch(/data di nascita/i);
+  });
+
+  it("G) form edit legacy: birthDate richiesta prima del nuovo ricalcolo", () => {
+    const legacy = baseSimulation({
+      patientBirthDate: undefined,
+      patientAge: 78,
+    });
+    expect(isLegacySimulationMissingBirthDate(legacy)).toBe(true);
+    const formValues = simulationToFormValues(legacy);
+    expect(formValues.patientBirthDate).toBe("");
+    const parsed = parseSimulationFormValues(formValues);
+    expect(parsed.success).toBe(false);
+    if (parsed.success) return;
+    expect(parsed.message).toMatch(/data di nascita|legacy/i);
+
+    formValues.patientBirthDate = "1948-01-10";
+    const ref = new Date("2026-09-14T12:00:00").getTime();
+    const withBirth = parseSimulationFormValues(formValues, ref);
+    expect(withBirth.success).toBe(true);
+    if (!withBirth.success) return;
+    expect(withBirth.data.patientBirthDate).toBe("1948-01-10");
+    expect(withBirth.data.patientAge).toBeGreaterThanOrEqual(18);
+  });
+
   it("A) creazione con employmentStartDate → modifica precompilata", () => {
     const values = simulationToFormValues(
       baseSimulation({ employmentStartDate: "2024-01-01" }),
     );
     expect(values.employmentStartDate).toBe("2024-01-01");
+    expect(values.patientBirthDate).toBe("1971-03-15");
     expect(getSimulationFormVisibility(values).showEmploymentStart).toBe(true);
   });
 
@@ -118,7 +165,7 @@ describe("simulationFormModel shared create/edit", () => {
     expect(parsed.data.temporaryContractExpiry).toBe(expiry);
   });
 
-  it("F) extracomunitario: residencePermitExpiry preservata", () => {
+  it("extracomunitario: residencePermitExpiry preservata", () => {
     const permit = new Date("2027-01-15T12:00:00").getTime();
     const existing = baseSimulation({
       isNonEuCitizen: true,
@@ -133,20 +180,25 @@ describe("simulationFormModel shared create/edit", () => {
     expect(parsed.data.residencePermitExpiry).toBe(permit);
   });
 
-  it("G) patientRequestsZeroInterest=true resta true dopo modifica altro campo", () => {
+  it("patientRequestsZeroInterest=true resta true dopo modifica altro campo", () => {
     const existing = baseSimulation({ patientRequestsZeroInterest: true });
     const formValues = simulationToFormValues(existing);
-    formValues.patientAge = "56";
-    const parsed = parseSimulationFormValues(formValues);
+    formValues.patientBirthDate = "1970-06-01";
+    const parsed = parseSimulationFormValues(
+      formValues,
+      new Date("2026-09-14T12:00:00").getTime(),
+    );
     expect(parsed.success).toBe(true);
     if (!parsed.success) return;
     expect(parsed.data.patientRequestsZeroInterest).toBe(true);
+    expect(parsed.data.patientAge).toBe(56);
   });
 
   it("end-to-end logico: create → edit innocuo → campi critici preservati", () => {
     const created = baseSimulation({
       employmentType: "permanent_employee",
       employmentStartDate: "2018-05-10",
+      patientBirthDate: "1971-03-15",
       patientAge: 55,
       isNonEuCitizen: false,
       requestedAmount: 4000,
@@ -166,6 +218,7 @@ describe("simulationFormModel shared create/edit", () => {
     expect(parsed.data.patientRequestsZeroInterest).toBe(true);
     expect(parsed.data.requestedAmount).toBe(4000);
     expect(parsed.data.requestedDurationMonths).toBe(18);
+    expect(parsed.data.patientBirthDate).toBe("1971-03-15");
   });
 
   it("default form e create condividono gli stessi campi", () => {
@@ -174,6 +227,7 @@ describe("simulationFormModel shared create/edit", () => {
       simulationToFormValues(baseSimulation()),
     ).sort();
     expect(fromSim).toEqual(keys);
+    expect(keys).toContain("patientBirthDate");
     expect(keys).toContain("employmentStartDate");
     expect(keys).toContain("hasResidencePermitRenewalReceiptOnly");
     expect(keys).toContain("hasGuarantor");
