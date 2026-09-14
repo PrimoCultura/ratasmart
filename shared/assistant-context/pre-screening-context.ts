@@ -1,5 +1,6 @@
 import { resolveTableDurationMonths } from "../table-durations.ts";
 import { normalizeText } from "../knowledge-engine/normalize.ts";
+import { isTableAvailableOnNetwork } from "../network-config/des-paoleschi-2026.ts";
 import type { MatchedEntities } from "./types.ts";
 import type { PreScreeningIntent } from "./intents.ts";
 import {
@@ -29,7 +30,7 @@ export type PreScreeningTable = {
   tableCode: string;
   displayName: string;
   category: string;
-  network: "PCG" | "DES";
+  network: "PCG" | "DES" | "Paoleschi";
   minimumAmount: number;
   maximumAmount: number;
   allowedDurations: number[];
@@ -45,7 +46,7 @@ export type PreScreeningPolicyRule = {
   productName?: string;
   financialTableId?: string;
   tableCode?: string;
-  network: "PCG" | "DES";
+  network: "PCG" | "DES" | "Paoleschi";
   policySetName: string;
   ruleType: string;
   operator: string;
@@ -60,7 +61,7 @@ export type PreScreeningPolicyRule = {
 
 export type PreScreeningContext = {
   detectedIntents: PreScreeningIntent[];
-  network: "PCG" | "DES";
+  network: "PCG" | "DES" | "Paoleschi";
   companies: PreScreeningCompany[];
   products: PreScreeningProduct[];
   tables: PreScreeningTable[];
@@ -70,7 +71,7 @@ export type PreScreeningContext = {
 };
 
 export type PreScreeningSourceData = {
-  network: "PCG" | "DES";
+  network: "PCG" | "DES" | "Paoleschi";
   companies: PreScreeningCompany[];
   products: Array<
     PreScreeningProduct & {
@@ -84,7 +85,7 @@ export type PreScreeningSourceData = {
     tableCode: string;
     displayName: string;
     category: string;
-    network: "PCG" | "DES";
+    network: "PCG" | "DES" | "Paoleschi";
     minimumAmount: number;
     maximumAmount: number;
     minimumDurationMonths: number;
@@ -98,7 +99,7 @@ export type PreScreeningSourceData = {
   policySets: Array<{
     id: string;
     name: string;
-    network: "PCG" | "DES";
+    network: "PCG" | "DES" | "Paoleschi";
     companyId: string;
     productId?: string;
     financialTableId?: string;
@@ -258,6 +259,17 @@ export function buildPreScreeningContext(input: {
   const activeTables = input.source.tables
     .filter((table) => table.network === network)
     .filter((table) => table.isActive !== false)
+    .filter((table) => {
+      const company = companyById.get(table.companyId);
+      if (!company) return false;
+      return isTableAvailableOnNetwork({
+        network: table.network,
+        companyShortName: company.shortName,
+        tableCode: table.tableCode,
+        customerTanPercent: table.customerTanPercent,
+        isActive: table.isActive,
+      });
+    })
     .map((table): PreScreeningTable => ({
       id: table.id,
       companyId: table.companyId,

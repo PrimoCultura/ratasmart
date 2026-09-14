@@ -53,6 +53,9 @@ function baseCalculation(
     internalCostPercentApplied: 0,
     internalCostAmount: 0,
     netAmountPaidToCompany: 5000,
+    activeCommissionPercent: 0,
+    activeCommissionAmount: 0,
+    companyEconomicValue: 5000,
     estimatedTaeg: {
       success: true,
       monthlyRate: 0.01,

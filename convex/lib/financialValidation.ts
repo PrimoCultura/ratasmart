@@ -1,6 +1,10 @@
 import { v } from "convex/values";
 
-export const networkValidator = v.union(v.literal("PCG"), v.literal("DES"));
+export const networkValidator = v.union(
+  v.literal("PCG"),
+  v.literal("DES"),
+  v.literal("Paoleschi"),
+);
 
 export const productCategoryValidator = v.union(
   v.literal("standard"),
@@ -8,6 +12,7 @@ export const productCategoryValidator = v.union(
   v.literal("subsidized"),
   v.literal("small_amount"),
   v.literal("special"),
+  v.literal("bnpl"),
 );
 
 export const openingFeeTypeValidator = v.union(
@@ -44,6 +49,7 @@ export const policyRuleTypeValidator = v.union(
   v.literal("maximum_amount"),
   v.literal("minimum_duration"),
   v.literal("maximum_duration"),
+  v.literal("precise_age_at_application_range"),
   v.literal("custom"),
 );
 
@@ -78,7 +84,8 @@ export type ProductCategory =
   | "zero_interest"
   | "subsidized"
   | "small_amount"
-  | "special";
+  | "special"
+  | "bnpl";
 
 export function defaultRequiresManagerAuthorization(
   category: ProductCategory,

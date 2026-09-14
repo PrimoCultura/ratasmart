@@ -11,6 +11,7 @@ export type SimulationFormValues = {
   patientLastName: string;
   network: PatientSimulationInput["network"];
   patientAge: string;
+  patientBirthDate: string;
   employmentType: PatientSimulationInput["employmentType"] | "";
   temporaryContractExpiry: string;
   isNonEuCitizen: "yes" | "no";
@@ -30,6 +31,7 @@ export const SIMULATION_FORM_DEFAULT_VALUES: SimulationFormValues = {
   patientLastName: "",
   network: "PCG",
   patientAge: "",
+  patientBirthDate: "",
   employmentType: "",
   temporaryContractExpiry: "",
   isNonEuCitizen: "no",
@@ -77,6 +79,7 @@ export function simulationToFormValues(
     network: simulation.network,
     patientAge:
       simulation.patientAge !== undefined ? String(simulation.patientAge) : "",
+    patientBirthDate: simulation.patientBirthDate ?? "",
     employmentType: simulation.employmentType ?? "",
     temporaryContractExpiry: msToDateInput(simulation.temporaryContractExpiry),
     isNonEuCitizen: simulation.isNonEuCitizen ? "yes" : "no",
@@ -156,6 +159,9 @@ export function parseSimulationFormValues(
     patientLastName: values.patientLastName,
     network: values.network,
     patientAge: Number(values.patientAge),
+    patientBirthDate: values.patientBirthDate.trim()
+      ? values.patientBirthDate.trim()
+      : undefined,
     employmentType: values.employmentType || undefined,
     temporaryContractExpiry: parseDateInputToMs(values.temporaryContractExpiry),
     isNonEuCitizen: values.isNonEuCitizen === "yes",

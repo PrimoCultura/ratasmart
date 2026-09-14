@@ -86,6 +86,9 @@ function baseSolution(
       internalCostPercentApplied: 2,
       internalCostAmount: 100,
       netAmountPaidToCompany: 5050,
+      activeCommissionPercent: 0,
+      activeCommissionAmount: 0,
+      companyEconomicValue: 5050,
       estimatedTaeg: {
         success: true,
         monthlyRate: 0.01,

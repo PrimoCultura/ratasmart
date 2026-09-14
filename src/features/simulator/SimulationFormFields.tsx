@@ -70,7 +70,17 @@ export function SimulationFormFields({
         />
       </div>
       <div className="space-y-2">
-        <Label>Rete PCG/DES</Label>
+        <Label htmlFor={id("patientBirthDate")}>
+          Data di nascita (opzionale, Senior SMV)
+        </Label>
+        <Input
+          id={id("patientBirthDate")}
+          type="date"
+          {...form.register("patientBirthDate")}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Rete</Label>
         <Controller
           control={form.control}
           name="network"

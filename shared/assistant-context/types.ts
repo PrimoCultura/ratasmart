@@ -45,7 +45,7 @@ export type AnonymizedSolutionSummary = {
 };
 
 export type AnonymizedSimulationContextInput = {
-  network: "PCG" | "DES";
+  network: "PCG" | "DES" | "Paoleschi";
   requestedAmount?: number;
   targetInstallment?: number;
   selectedDurationMonths?: number;
@@ -62,14 +62,14 @@ export type EntityCatalogItem = {
   labels: string[];
   companyId?: string;
   productId?: string;
-  network?: "PCG" | "DES";
+  network?: "PCG" | "DES" | "Paoleschi";
 };
 
 export type MatchedEntities = {
   companyIds: string[];
   productIds: string[];
   tableIds: string[];
-  networks: Array<"PCG" | "DES">;
+  networks: Array<"PCG" | "DES" | "Paoleschi">;
   matchedLabels: string[];
 };
 

@@ -4,6 +4,7 @@ export const PRODUCT_CATEGORIES = [
   "subsidized",
   "small_amount",
   "special",
+  "bnpl",
 ] as const;
 
 export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
@@ -14,6 +15,7 @@ export const PRODUCT_CATEGORY_LABELS: Record<ProductCategory, string> = {
   subsidized: "Tasso agevolato",
   small_amount: "Piccoli importi",
   special: "Prodotto speciale",
+  bnpl: "BNPL",
 };
 
 export const OPENING_FEE_TYPES = ["none", "fixed", "percentage"] as const;
@@ -90,6 +92,7 @@ export const POLICY_RULE_TYPES = [
   "maximum_amount",
   "minimum_duration",
   "maximum_duration",
+  "precise_age_at_application_range",
   "custom",
 ] as const;
 
@@ -112,6 +115,7 @@ export const POLICY_RULE_TYPE_LABELS: Record<PolicyRuleType, string> = {
   maximum_amount: "Importo massimo",
   minimum_duration: "Durata minima",
   maximum_duration: "Durata massima",
+  precise_age_at_application_range: "Range età preciso alla richiesta (Senior)",
   custom: "Regola personalizzata",
 };
 

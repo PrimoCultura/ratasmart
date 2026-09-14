@@ -32,6 +32,8 @@ const MONEY_FIELDS: Array<keyof CalculationSummarySnapshot> = [
   "totalCustomerCosts",
   "internalCostAmount",
   "netAmountPaidToCompany",
+  "activeCommissionAmount",
+  "companyEconomicValue",
 ];
 
 export function isStaleEngineVersion(
@@ -133,6 +135,8 @@ export function regenerateAmortizationFromInputSnapshot(input: {
     internalCostPercentAt24Months:
       input.calculationInput.internalCostPercentAt24Months,
     internalCostBase: input.calculationInput.internalCostBase,
+    activeCommissionPercent: input.calculationInput.activeCommissionPercent,
+    activeCommissionBase: input.calculationInput.activeCommissionBase,
     firstInstallmentDelayDays:
       input.calculationInput.firstInstallmentDelayDays,
   });

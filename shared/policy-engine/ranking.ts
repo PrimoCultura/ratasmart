@@ -15,7 +15,7 @@ function installmentSortValue(solution: RuntimeFinancialSolution): number {
   );
 }
 
-/** Gruppo 1: senza costo/autorizzazione; Gruppo 2: con costo o alert autorizzazione. */
+/** Gruppo 1: senza costo/autorizzazione; Gruppo 2: con costo o alert; BNPL separato. */
 function hasCorporateCostOrAuthorization(
   solution: RuntimeFinancialSolution,
 ): boolean {
@@ -23,6 +23,10 @@ function hasCorporateCostOrAuthorization(
     (solution.calculation?.internalCostAmount ?? 0) > 0 ||
     solution.requiresManagerAuthorizationNotice
   );
+}
+
+function isBnpl(solution: RuntimeFinancialSolution): boolean {
+  return solution.category === "bnpl";
 }
 
 function compareCompatibleWithinGroup(
@@ -57,11 +61,16 @@ export function rankFinancialSolutions(
     (item) => item.compatibility.status === "compatible",
   );
 
-  const withoutCost = compatible
+  const nonBnpl = compatible.filter((item) => !isBnpl(item));
+  const bnpl = compatible
+    .filter((item) => isBnpl(item))
+    .sort(compareCompatibleWithinGroup);
+
+  const withoutCost = nonBnpl
     .filter((item) => !hasCorporateCostOrAuthorization(item))
     .sort(compareCompatibleWithinGroup);
 
-  const withCost = compatible
+  const withCost = nonBnpl
     .filter((item) => hasCorporateCostOrAuthorization(item))
     .sort(compareCompatibleWithinGroup);
 
@@ -89,7 +98,13 @@ export function rankFinancialSolutions(
       return a.tableCode.localeCompare(b.tableCode, "it");
     });
 
-  return [...withoutCost, ...withCost, ...verification, ...incompatible];
+  return [
+    ...withoutCost,
+    ...withCost,
+    ...bnpl,
+    ...verification,
+    ...incompatible,
+  ];
 }
 
 export function findNearestTargetSolution(

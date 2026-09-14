@@ -3,7 +3,7 @@
  * Allineati ai campi Convex di simulationComparisonRuns / Solutions.
  */
 
-export type NetworkCode = "PCG" | "DES";
+export type NetworkCode = "PCG" | "DES" | "Paoleschi";
 
 export type EmploymentTypeSnapshot =
   | "permanent_employee"
@@ -96,6 +96,8 @@ export type FinancialTableSnapshot = {
   installmentFeeValue?: number;
   internalCostPercentAt24Months?: number;
   internalCostBase?: InternalCostBaseSnapshot;
+  activeCommissionPercent?: number;
+  activeCommissionBase?: "requested_amount";
   supportedFirstInstallmentDelayDays: number[];
   requiresManagerAuthorizationNotice: boolean;
 };
@@ -121,6 +123,8 @@ export type CalculationInputSnapshot = {
   internalCostPercentApplied?: number;
   internalCostPercentAt24Months?: number;
   internalCostBase?: InternalCostBaseSnapshot;
+  activeCommissionPercent?: number;
+  activeCommissionBase?: "requested_amount";
   firstInstallmentDelayDays: number;
 };
 
@@ -147,6 +151,10 @@ export type CalculationSummarySnapshot = {
   internalCostPercentApplied: number;
   internalCostAmount: number;
   netAmountPaidToCompany: number;
+  activeCommissionPercent?: number;
+  activeCommissionBase?: "requested_amount";
+  activeCommissionAmount?: number;
+  companyEconomicValue?: number;
 };
 
 export type RuleSnapshot = {
@@ -262,6 +270,8 @@ export type TableMetadataForSnapshot = {
   installmentFeeValue?: number;
   internalCostPercentAt24Months?: number;
   internalCostBase?: InternalCostBaseSnapshot;
+  activeCommissionPercent?: number;
+  activeCommissionBase?: "requested_amount";
   firstInstallmentDelayDays: number[];
   requiresManagerAuthorizationNotice: boolean;
 };

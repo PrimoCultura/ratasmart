@@ -106,6 +106,7 @@ export const calculateSimulationComparison = action({
 
       const patient: PatientFinancialProfile = {
         age: simulation.patientAge,
+        birthDate: simulation.patientBirthDate,
         employmentType: simulation.employmentType,
         temporaryContractExpiry: simulation.temporaryContractExpiry,
         isNonEuCitizen: simulation.isNonEuCitizen,
@@ -141,7 +142,7 @@ export const calculateSimulationComparison = action({
         internalMessages: bundle.internalMessages.map(
           (item: {
             id: string;
-            network: "PCG" | "DES";
+            network: "PCG" | "DES" | "Paoleschi";
             companyId?: string;
             productId?: string;
             financialTableId?: string;
@@ -233,7 +234,7 @@ export const calculateSimulationComparison = action({
               tableCode: string;
               displayName: string;
               description?: string;
-              network: "PCG" | "DES";
+              network: "PCG" | "DES" | "Paoleschi";
               category: string;
               minimumAmount: number;
               maximumAmount: number;

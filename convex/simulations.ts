@@ -20,7 +20,11 @@ const employmentTypeValidator = v.union(
   v.literal("other"),
 );
 
-const networkValidator = v.union(v.literal("PCG"), v.literal("DES"));
+const networkValidator = v.union(
+  v.literal("PCG"),
+  v.literal("DES"),
+  v.literal("Paoleschi"),
+);
 
 const delayDaysValidator = v.union(
   v.literal(30),
@@ -257,6 +261,7 @@ export const updateSimulationPatientData = mutation({
     requestedAmount: v.number(),
     targetInstallment: v.optional(v.number()),
     patientAge: v.number(),
+    patientBirthDate: v.optional(v.string()),
     employmentType: employmentTypeValidator,
     temporaryContractExpiry: v.optional(v.number()),
     isNonEuCitizen: v.boolean(),
@@ -311,6 +316,7 @@ export const updateSimulationPatientData = mutation({
         requestedAmount: args.requestedAmount,
         targetInstallment: args.targetInstallment,
         patientAge: args.patientAge,
+        patientBirthDate: args.patientBirthDate ?? simulation.patientBirthDate,
         employmentType: args.employmentType,
         temporaryContractExpiry:
           args.employmentType === "temporary_employee"
@@ -364,6 +370,7 @@ export const updateSimulationPatientData = mutation({
       requestedAmount: args.requestedAmount,
       targetInstallment: args.targetInstallment,
       patientAge: args.patientAge,
+      patientBirthDate: args.patientBirthDate,
       employmentType: args.employmentType,
       temporaryContractExpiry:
         args.employmentType === "temporary_employee"

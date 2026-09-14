@@ -5,7 +5,7 @@ export const APP_SUBTITLE =
 
 export const MAX_DEMO_CM_USERS = 2;
 
-export const NETWORKS = ["PCG", "DES"] as const;
+export const NETWORKS = ["PCG", "DES", "Paoleschi"] as const;
 export type Network = (typeof NETWORKS)[number];
 
 export const SIMULATION_STATUSES = ["draft", "proposed"] as const;

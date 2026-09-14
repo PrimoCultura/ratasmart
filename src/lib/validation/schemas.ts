@@ -60,6 +60,10 @@ export const patientSimulationSchema = z
       })
       .int("L'età deve essere un numero intero")
       .gte(18, "L'età deve essere almeno 18 anni"),
+    patientBirthDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Data di nascita non valida")
+      .optional(),
     employmentType: z.enum(EMPLOYMENT_TYPES, {
       required_error: "Seleziona la condizione lavorativa",
     }),

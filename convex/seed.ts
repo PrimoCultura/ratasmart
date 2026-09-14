@@ -18,6 +18,9 @@ import {
   upsertPcgFinancingPolicies2026,
   upsertPcgKnowledgeCards2026,
 } from "./lib/pcgPolicySeedRunner";
+import {
+  upsertDesPaoleschi2026,
+} from "./lib/desPaoleschiSeedRunner";
 import { validateFinancialTableEconomics } from "./lib/financialValidation";
 
 /**
@@ -864,5 +867,20 @@ export const activateVirtualMarcoPreScreeningPrompt = mutation({
       configId,
       warning: null as string | null,
     };
+  },
+});
+
+/**
+ * Seed idempotente DES / Paoleschi 2026.
+ * Non inventa economie tabelle mancanti; crea società/prodotto shell e
+ * disattiva disponibilità errate se presenti.
+ */
+export const seedDesPaoleschi2026 = mutation({
+  args: {
+    actorUserId: v.id("appUsers"),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx, args.actorUserId);
+    return await upsertDesPaoleschi2026(ctx, args.actorUserId);
   },
 });

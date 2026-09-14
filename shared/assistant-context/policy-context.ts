@@ -5,7 +5,7 @@ export type PolicyContextInput = {
   policies: Array<{
     id: string;
     name: string;
-    network: "PCG" | "DES";
+    network: "PCG" | "DES" | "Paoleschi";
     companyId?: string;
     productId?: string;
     financialTableId?: string;
@@ -15,7 +15,7 @@ export type PolicyContextInput = {
     id: string;
     tableCode: string;
     displayName: string;
-    network: "PCG" | "DES";
+    network: "PCG" | "DES" | "Paoleschi";
     companyId: string;
     productId: string;
     customerTanPercent: number;
@@ -112,7 +112,7 @@ export function buildEntityCatalogFromActiveData(input: {
     productId: string;
     tableCode: string;
     displayName: string;
-    network: "PCG" | "DES";
+    network: "PCG" | "DES" | "Paoleschi";
   }>;
 }): EntityCatalogItem[] {
   const catalog: EntityCatalogItem[] = [];

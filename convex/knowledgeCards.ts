@@ -36,6 +36,7 @@ export const knowledgeCategoryValidator = v.union(
 export const knowledgeNetworkValidator = v.union(
   v.literal("PCG"),
   v.literal("DES"),
+  v.literal("Paoleschi"),
   v.literal("BOTH"),
 );
 
@@ -76,7 +77,7 @@ function toRuntimeCard(card: {
   title: string;
   content: string;
   category: string;
-  network: "PCG" | "DES" | "BOTH";
+  network: "PCG" | "DES" | "Paoleschi" | "BOTH";
   companyId?: string;
   productId?: string;
   financialTableId?: string;
@@ -158,7 +159,9 @@ export const getKnowledgeCard = query({
 
 export const listActiveKnowledgeCards = query({
   args: {
-    network: v.optional(v.union(v.literal("PCG"), v.literal("DES"))),
+    network: v.optional(
+      v.union(v.literal("PCG"), v.literal("DES"), v.literal("Paoleschi")),
+    ),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -498,7 +501,11 @@ export const deleteKnowledgeCardIfUnused = mutation({
 export const previewKnowledgeContext = query({
   args: {
     actorUserId: v.id("appUsers"),
-    network: v.union(v.literal("PCG"), v.literal("DES")),
+    network: v.union(
+      v.literal("PCG"),
+      v.literal("DES"),
+      v.literal("Paoleschi"),
+    ),
     companyId: v.optional(v.id("financialCompanies")),
     productId: v.optional(v.id("financialProducts")),
     financialTableId: v.optional(v.id("financialTables")),

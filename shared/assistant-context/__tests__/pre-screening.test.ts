@@ -288,7 +288,7 @@ describe("buildPreScreeningContext", () => {
       companyIds: [],
       productIds: [],
       tableIds: [],
-      networks: [] as Array<"PCG" | "DES">,
+      networks: [] as Array<"PCG" | "DES" | "Paoleschi">,
       matchedLabels: [],
     };
     const context = buildPreScreeningContext({
@@ -376,7 +376,7 @@ describe("pre-screening privacy e provider context sufficiency", () => {
     companyIds: [] as string[],
     productIds: [] as string[],
     tableIds: [] as string[],
-    networks: [] as Array<"PCG" | "DES">,
+    networks: [] as Array<"PCG" | "DES" | "Paoleschi">,
     matchedLabels: [] as string[],
   };
 
@@ -662,5 +662,163 @@ describe("regressione studente importo – esclusione Agos prima delle tabelle",
     expect(
       context.tables.every((table) => table.companyId !== "c-agos"),
     ).toBe(true);
+  });
+
+  it("rete DES: solo tabelle network DES ammesse (no Agos/Qmodo/PCG)", () => {
+    const source = fixtureSource();
+    source.network = "DES";
+    source.companies = [
+      ...source.companies,
+      {
+        id: "c-heylight",
+        name: "HeyLight",
+        shortName: "HeyLight",
+      },
+    ];
+    source.products = [
+      ...source.products,
+      {
+        id: "p-heylight",
+        companyId: "c-heylight",
+        name: "HeyLight BNPL",
+        code: "HEYLIGHT_BNPL",
+        category: "zero_interest",
+        isActive: true,
+      },
+    ];
+    source.tables = [
+      ...source.tables,
+      {
+        id: "t-4cf",
+        companyId: "c-compass",
+        productId: "p-compass",
+        tableCode: "4CF",
+        displayName: "4CF",
+        category: "standard",
+        network: "DES",
+        minimumAmount: 1000,
+        maximumAmount: 10000,
+        minimumDurationMonths: 12,
+        maximumDurationMonths: 48,
+        durationStepMonths: 12,
+        durationTerms: null,
+        firstInstallmentDelayDays: [30],
+        customerTanPercent: 10.75,
+        isActive: true,
+      },
+      {
+        id: "t-hl-des",
+        companyId: "c-heylight",
+        productId: "p-heylight",
+        tableCode: "TR7",
+        displayName: "HeyLight TR7",
+        category: "bnpl",
+        network: "DES",
+        minimumAmount: 100,
+        maximumAmount: 2000,
+        minimumDurationMonths: 3,
+        maximumDurationMonths: 12,
+        durationStepMonths: 3,
+        durationTerms: null,
+        firstInstallmentDelayDays: [30],
+        customerTanPercent: 0,
+        isActive: true,
+      },
+      {
+        id: "t-mke",
+        companyId: "c-compass",
+        productId: "p-compass",
+        tableCode: "MKE",
+        displayName: "MKE",
+        category: "standard",
+        network: "DES",
+        minimumAmount: 1000,
+        maximumAmount: 5000,
+        minimumDurationMonths: 12,
+        maximumDurationMonths: 24,
+        durationStepMonths: 12,
+        durationTerms: null,
+        firstInstallmentDelayDays: [30],
+        customerTanPercent: 10,
+        isActive: true,
+      },
+    ];
+    const context = buildPreScreeningContext({
+      intents: ["duration", "amount"],
+      matched: {
+        companyIds: [],
+        productIds: [],
+        tableIds: [],
+        networks: ["DES"],
+        matchedLabels: [],
+      },
+      source,
+    });
+    const codes = context.tables.map((table) => table.tableCode).sort();
+    expect(codes).toEqual(["4CF", "TR7"]);
+    expect(codes).not.toContain("DES_ONLY");
+    expect(codes).not.toContain("MKE");
+    expect(codes).not.toContain("NBQ");
+    expect(codes).not.toContain("81K");
+  });
+
+  it("rete Paoleschi: solo tabelle network Paoleschi ammesse", () => {
+    const source = fixtureSource();
+    source.network = "Paoleschi";
+    source.tables = [
+      ...source.tables,
+      {
+        id: "t-paoleschi-db",
+        companyId: "c-db",
+        productId: "p-db",
+        tableCode: "DB_ST",
+        displayName: "Paoleschi DB ST",
+        category: "standard",
+        network: "Paoleschi",
+        minimumAmount: 1000,
+        maximumAmount: 10000,
+        minimumDurationMonths: 12,
+        maximumDurationMonths: 48,
+        durationStepMonths: 12,
+        durationTerms: null,
+        firstInstallmentDelayDays: [30],
+        customerTanPercent: 9.95,
+        isActive: true,
+      },
+      {
+        id: "t-paoleschi-compass",
+        companyId: "c-compass",
+        productId: "p-compass",
+        tableCode: "PAO_CMP",
+        displayName: "Paoleschi Compass",
+        category: "standard",
+        network: "Paoleschi",
+        minimumAmount: 1000,
+        maximumAmount: 5000,
+        minimumDurationMonths: 12,
+        maximumDurationMonths: 24,
+        durationStepMonths: 12,
+        durationTerms: null,
+        firstInstallmentDelayDays: [30],
+        customerTanPercent: 10.75,
+        isActive: true,
+      },
+    ];
+    const context = buildPreScreeningContext({
+      intents: ["duration"],
+      matched: {
+        companyIds: [],
+        productIds: [],
+        tableIds: [],
+        networks: ["Paoleschi"],
+        matchedLabels: [],
+      },
+      source,
+    });
+    const codes = context.tables.map((table) => table.tableCode).sort();
+    expect(codes).toEqual(["DB_ST"]);
+    expect(codes).not.toContain("PAO_CMP");
+    expect(codes).not.toContain("NBQ");
+    expect(codes).not.toContain("DES_ONLY");
   });
 });

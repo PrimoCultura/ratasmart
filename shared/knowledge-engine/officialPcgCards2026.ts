@@ -29,7 +29,7 @@ export type OfficialKnowledgeCardSeed = {
   legacyTitles?: string[];
   content: string;
   category: KnowledgeCardSeedCategory;
-  network: "PCG" | "DES" | "BOTH";
+  network: "PCG" | "DES" | "Paoleschi" | "BOTH";
   companyShortName?: "Agos" | "Compass" | "Deutsche Bank";
   productName?: string;
   keywords: string[];

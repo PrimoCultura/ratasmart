@@ -1,4 +1,5 @@
 import { buildFrenchAmortizationSchedule } from "./amortization.ts";
+import { calculateActiveCommission } from "./active-commission.ts";
 import { FinancialEngineError } from "./errors.ts";
 import { calculateInternalCost } from "./internal-cost.ts";
 import { resolveInstallmentFee } from "./installment-fee.ts";
@@ -80,13 +81,13 @@ function validateInput(input: FinancialCalculationInput): void {
   }
 
   if (
-    input.internalCostPercentAt24Months !== undefined &&
-    (!Number.isFinite(input.internalCostPercentAt24Months) ||
-      input.internalCostPercentAt24Months < 0)
+    input.activeCommissionPercent !== undefined &&
+    (!Number.isFinite(input.activeCommissionPercent) ||
+      input.activeCommissionPercent < 0)
   ) {
     throw new FinancialEngineError(
       "INVALID_INTERNAL_COST",
-      "Il costo interno a 24 mesi non può essere negativo.",
+      "La provvigione attiva non può essere negativa.",
     );
   }
 }
@@ -165,6 +166,18 @@ export function calculateFinancialSolution(
     internalCostPercentAt24Months: input.internalCostPercentAt24Months,
   });
 
+  const commission = calculateActiveCommission({
+    requestedAmount: input.requestedAmount,
+    activeCommissionPercent: input.activeCommissionPercent,
+    activeCommissionBase: input.activeCommissionBase,
+  });
+
+  const companyEconomicValue = roundMoney(
+    toDecimal(internal.netAmountPaidToCompany).plus(
+      commission.activeCommissionAmount,
+    ),
+  );
+
   const estimatedTaeg = estimateTechnicalTaeg({
     requestedAmount: input.requestedAmount,
     schedule,
@@ -203,6 +216,10 @@ export function calculateFinancialSolution(
     internalCostPercentApplied: internal.internalCostPercentApplied,
     internalCostAmount: internal.internalCostAmount,
     netAmountPaidToCompany: internal.netAmountPaidToCompany,
+    activeCommissionPercent: commission.activeCommissionPercent,
+    activeCommissionBase: commission.activeCommissionBase,
+    activeCommissionAmount: commission.activeCommissionAmount,
+    companyEconomicValue,
     estimatedTaeg,
     amortizationSchedule: schedule,
     warnings: [

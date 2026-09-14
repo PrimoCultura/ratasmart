@@ -35,7 +35,7 @@ import { formatCurrency, formatDateTime } from "@/lib/formatting/currency";
 import { useMySimulationsWithSummary } from "@/hooks";
 import { ProposedSolutionBadge } from "@/features/simulator/history/ProposedSolutionBadge";
 
-type NetworkFilter = "ALL" | "PCG" | "DES";
+type NetworkFilter = "ALL" | "PCG" | "DES" | "Paoleschi";
 
 export function HistoryPage() {
   const { userId } = useCurrentUser();
@@ -110,6 +110,7 @@ export function HistoryPage() {
             <SelectItem value="ALL">Tutte le reti</SelectItem>
             <SelectItem value="PCG">PCG</SelectItem>
             <SelectItem value="DES">DES</SelectItem>
+            <SelectItem value="Paoleschi">Paoleschi</SelectItem>
           </SelectContent>
         </Select>
       </div>

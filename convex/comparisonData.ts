@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { isCurrentlyValid, requireActiveUser } from "./lib/authHelpers";
 import { collectRulesForTable } from "./lib/policyMapper";
+import { isTableAvailableOnNetwork } from "../shared/network-config/des-paoleschi-2026";
 
 export const getComparisonBundle = internalQuery({
   args: {
@@ -54,7 +55,17 @@ export const getComparisonBundle = internalQuery({
       if (!isCurrentlyValid(now, table.validFrom, table.validTo)) return false;
       const company = companyMap.get(table.companyId);
       const product = productMap.get(table.productId);
-      return company?.isActive !== false && product?.isActive !== false;
+      if (company?.isActive === false || product?.isActive === false) {
+        return false;
+      }
+      if (!company) return false;
+      return isTableAvailableOnNetwork({
+        network: table.network,
+        companyShortName: company.shortName,
+        tableCode: table.tableCode,
+        customerTanPercent: table.customerTanPercent,
+        isActive: table.isActive,
+      });
     });
 
     const rulesByTableId: Record<string, ReturnType<typeof collectRulesForTable>> =
@@ -127,6 +138,8 @@ export const getComparisonBundle = internalQuery({
         installmentFeeValue: table.installmentFeeValue,
         internalCostPercentAt24Months: table.internalCostPercentAt24Months,
         internalCostBase: table.internalCostBase,
+        activeCommissionPercent: table.activeCommissionPercent,
+        activeCommissionBase: table.activeCommissionBase,
         durationTerms: table.durationTerms,
         firstInstallmentDelayDays: table.firstInstallmentDelayDays,
         requiresManagerAuthorizationNotice:

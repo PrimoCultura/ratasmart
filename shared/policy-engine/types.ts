@@ -10,6 +10,8 @@ export type EmploymentType =
 
 export type PatientFinancialProfile = {
   age: number;
+  /** ISO `YYYY-MM-DD` — necessaria per età Senior SMV precisa. */
+  birthDate?: string;
   employmentType: EmploymentType;
   temporaryContractExpiry?: number;
   isNonEuCitizen: boolean;
@@ -48,6 +50,7 @@ export type PolicyRuleType =
   | "maximum_amount"
   | "minimum_duration"
   | "maximum_duration"
+  | "precise_age_at_application_range"
   | "custom";
 
 export type PolicyOperator =
@@ -115,7 +118,7 @@ export type RuntimeFinancialSolution = {
   tableCode: string;
   tableDisplayName: string;
   category: string;
-  network: "PCG" | "DES";
+  network: "PCG" | "DES" | "Paoleschi";
   durationMonths: number;
   firstInstallmentDelayDays: number;
   calculation: import("../financial-engine/types.ts").FinancialCalculationResult | null;
@@ -146,7 +149,7 @@ export type RuntimeFinancialSolution = {
 export type SimulationComparisonResult = {
   simulationId: string;
   calculationDate: number;
-  network: "PCG" | "DES";
+  network: "PCG" | "DES" | "Paoleschi";
   selectedDurationMonths: number;
   selectedFirstInstallmentDelayDays: number;
   targetInstallment?: number;

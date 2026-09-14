@@ -34,6 +34,8 @@ import type * as lib_ai_providerFactory from "../lib/ai/providerFactory.js";
 import type * as lib_ai_types from "../lib/ai/types.js";
 import type * as lib_authHelpers from "../lib/authHelpers.js";
 import type * as lib_comparisonSnapshotMapper from "../lib/comparisonSnapshotMapper.js";
+import type * as lib_desPaoleschi2026Data from "../lib/desPaoleschi2026Data.js";
+import type * as lib_desPaoleschiSeedRunner from "../lib/desPaoleschiSeedRunner.js";
 import type * as lib_financialValidation from "../lib/financialValidation.js";
 import type * as lib_pcg2026SeedData from "../lib/pcg2026SeedData.js";
 import type * as lib_pcgFinancingPolicies2026Data from "../lib/pcgFinancingPolicies2026Data.js";
@@ -78,6 +80,8 @@ declare const fullApi: ApiFromModules<{
   "lib/ai/types": typeof lib_ai_types;
   "lib/authHelpers": typeof lib_authHelpers;
   "lib/comparisonSnapshotMapper": typeof lib_comparisonSnapshotMapper;
+  "lib/desPaoleschi2026Data": typeof lib_desPaoleschi2026Data;
+  "lib/desPaoleschiSeedRunner": typeof lib_desPaoleschiSeedRunner;
   "lib/financialValidation": typeof lib_financialValidation;
   "lib/pcg2026SeedData": typeof lib_pcg2026SeedData;
   "lib/pcgFinancingPolicies2026Data": typeof lib_pcgFinancingPolicies2026Data;

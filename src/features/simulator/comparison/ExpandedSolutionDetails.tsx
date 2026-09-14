@@ -167,7 +167,7 @@ export function ExpandedSolutionDetails({
           <DetailSection title={companySectionTitle}>
             <div className="grid gap-2 sm:grid-cols-3">
               <Info
-                label="Costo aziendale"
+                label="Costo azienda"
                 value={formatCurrency(calc.internalCostAmount)}
               />
               <Info
@@ -178,6 +178,23 @@ export function ExpandedSolutionDetails({
                 label={`Netto liquidato a ${table.network}`}
                 value={formatCurrency(calc.netAmountPaidToCompany)}
               />
+              {calc.activeCommissionAmount !== undefined &&
+              calc.activeCommissionAmount > 0 ? (
+                <>
+              <Info
+                label="Provvigione attiva"
+                value={formatPercent(calc.activeCommissionPercent ?? 0)}
+              />
+              <Info
+                label="Valore provvigione"
+                value={formatCurrency(calc.activeCommissionAmount ?? 0)}
+              />
+              <Info
+                label="Valore economico società"
+                value={formatCurrency(calc.companyEconomicValue ?? 0)}
+              />
+                </>
+              ) : null}
             </div>
           </DetailSection>
         </>

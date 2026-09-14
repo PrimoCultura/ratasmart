@@ -19,6 +19,7 @@ import {
   selectRelevantKnowledgeCards,
   type RuntimeKnowledgeCard,
 } from "../shared/knowledge-engine/index";
+import { isTableAvailableOnNetwork } from "../shared/network-config/des-paoleschi-2026";
 
 /**
  * Bundle server-side per costruire il prompt Virtual Marco.
@@ -79,10 +80,22 @@ export const getVirtualMarcoTurnBundle = internalQuery({
       .query("financialProducts")
       .withIndex("by_is_active", (q) => q.eq("isActive", true))
       .collect();
-    const tables = await ctx.db
+    const tablesRaw = await ctx.db
       .query("financialTables")
       .withIndex("by_is_active", (q) => q.eq("isActive", true))
       .collect();
+    const companyById = new Map(companies.map((item) => [item._id, item]));
+    const tables = tablesRaw.filter((table) => {
+      const company = companyById.get(table.companyId);
+      if (!company) return false;
+      return isTableAvailableOnNetwork({
+        network: table.network,
+        companyShortName: company.shortName,
+        tableCode: table.tableCode,
+        customerTanPercent: table.customerTanPercent,
+        isActive: table.isActive,
+      });
+    });
 
     const catalog = buildEntityCatalogFromActiveData({
       companies: companies.map((item) => ({
@@ -110,7 +123,7 @@ export const getVirtualMarcoTurnBundle = internalQuery({
     const intents = detectPreScreeningIntents(args.userQuestion);
 
     let simulationContextText = "";
-    let network: "PCG" | "DES" = matched.networks[0] ?? "PCG";
+    let network: "PCG" | "DES" | "Paoleschi" = matched.networks[0] ?? "PCG";
     let companyId = matched.companyIds[0];
     let productId = matched.productIds[0];
     let financialTableId = matched.tableIds[0];

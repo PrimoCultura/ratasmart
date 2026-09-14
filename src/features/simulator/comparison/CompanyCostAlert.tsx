@@ -31,7 +31,7 @@ export function CompanyCostAlert({
       />
       <div className="min-w-0 space-y-0.5">
         <p className="font-medium">
-          Costo aziendale: {formatCurrency(internalCostAmount)}
+          Costo azienda: {formatCurrency(internalCostAmount)}
         </p>
         <p className={compact ? "text-[11px] leading-snug text-red-800/90" : undefined}>
           Autorizzazione del responsabile necessaria

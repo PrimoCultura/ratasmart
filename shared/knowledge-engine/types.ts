@@ -1,4 +1,4 @@
-export type KnowledgeNetwork = "PCG" | "DES" | "BOTH";
+export type KnowledgeNetwork = "PCG" | "DES" | "Paoleschi" | "BOTH";
 
 export type KnowledgeCategory =
   | "documents"
@@ -22,7 +22,7 @@ export type KnowledgeCardVisibility = "patient_safe" | "internal_only";
 export type ChatPrivacyMode = "patient_safe" | "internal";
 
 export type KnowledgeSelectionContext = {
-  network: "PCG" | "DES";
+  network: "PCG" | "DES" | "Paoleschi";
   /** @deprecated Preferire companyIds per query multi-finanziaria. */
   companyId?: string;
   /** Finanziarie matchate nella domanda (tutte, non solo la prima). */

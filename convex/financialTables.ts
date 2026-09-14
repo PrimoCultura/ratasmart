@@ -10,6 +10,7 @@ import {
   productCategoryValidator,
   validateFinancialTableEconomics,
 } from "./lib/financialValidation";
+import { isTableAvailableOnNetwork } from "../shared/network-config/des-paoleschi-2026";
 
 const durationTermValidator = v.object({
   durationMonths: v.number(),
@@ -33,6 +34,8 @@ const tableEconomicsArgs = {
   installmentFeeValue: v.optional(v.number()),
   internalCostPercentAt24Months: v.optional(v.number()),
   internalCostBase: v.optional(internalCostBaseValidator),
+  activeCommissionPercent: v.optional(v.number()),
+  activeCommissionBase: v.optional(v.literal("requested_amount")),
   durationTerms: v.optional(v.array(durationTermValidator)),
   firstInstallmentDelayDays: v.array(v.number()),
   requiresManagerAuthorizationNotice: v.boolean(),
@@ -133,13 +136,23 @@ export const listActiveFinancialTables = query({
     const productMap = new Map(products.map((p) => [p._id, p]));
 
     return tables
-      .filter(
-        (table) =>
-          table.isActive &&
-          isCurrentlyValid(now, table.validFrom, table.validTo) &&
-          companyMap.get(table.companyId)?.isActive !== false &&
-          productMap.get(table.productId)?.isActive !== false,
-      )
+      .filter((table) => {
+        if (!table.isActive) return false;
+        if (!isCurrentlyValid(now, table.validFrom, table.validTo)) return false;
+        const company = companyMap.get(table.companyId);
+        const product = productMap.get(table.productId);
+        if (company?.isActive === false || product?.isActive === false) {
+          return false;
+        }
+        if (!company) return false;
+        return isTableAvailableOnNetwork({
+          network: table.network,
+          companyShortName: company.shortName,
+          tableCode: table.tableCode,
+          customerTanPercent: table.customerTanPercent,
+          isActive: table.isActive,
+        });
+      })
       .map((table) => ({
         ...table,
         company: companyMap.get(table.companyId) ?? null,
@@ -242,6 +255,8 @@ export const createFinancialTable = mutation({
       installmentFeeValue: args.installmentFeeValue,
       internalCostPercentAt24Months: args.internalCostPercentAt24Months,
       internalCostBase: args.internalCostBase,
+      activeCommissionPercent: args.activeCommissionPercent,
+      activeCommissionBase: args.activeCommissionBase,
       durationTerms: normalizeDurationTerms(args.durationTerms),
       firstInstallmentDelayDays: [...args.firstInstallmentDelayDays].sort(
         (a, b) => a - b,
@@ -363,6 +378,8 @@ export const createNewFinancialTableVersion = mutation({
       installmentFeeValue: args.installmentFeeValue,
       internalCostPercentAt24Months: args.internalCostPercentAt24Months,
       internalCostBase: args.internalCostBase,
+      activeCommissionPercent: args.activeCommissionPercent,
+      activeCommissionBase: args.activeCommissionBase,
       durationTerms: normalizeDurationTerms(args.durationTerms),
       firstInstallmentDelayDays: [...args.firstInstallmentDelayDays].sort(
         (a, b) => a - b,

@@ -36,11 +36,12 @@ export const KNOWLEDGE_CATEGORY_LABELS: Record<KnowledgeCategory, string> = {
   other: "Altro",
 };
 
-export const KNOWLEDGE_NETWORKS = ["PCG", "DES", "BOTH"] as const;
+export const KNOWLEDGE_NETWORKS = ["PCG", "DES", "Paoleschi", "BOTH"] as const;
 export type KnowledgeNetwork = (typeof KNOWLEDGE_NETWORKS)[number];
 
 export const KNOWLEDGE_NETWORK_LABELS: Record<KnowledgeNetwork, string> = {
   PCG: "PCG",
   DES: "DES",
-  BOTH: "Entrambe",
+  Paoleschi: "Paoleschi",
+  BOTH: "Entrambe / tutte",
 };

@@ -42,7 +42,7 @@ export type RuntimeFinancialTable = {
   id: string;
   companyId: string;
   productId: string;
-  network: "PCG" | "DES";
+  network: "PCG" | "DES" | "Paoleschi";
   tableCode: string;
   displayName: string;
   description?: string;
@@ -62,6 +62,8 @@ export type RuntimeFinancialTable = {
   installmentFeeValue?: number;
   internalCostPercentAt24Months?: number;
   internalCostBase?: "requested_amount" | "financed_amount";
+  activeCommissionPercent?: number;
+  activeCommissionBase?: "requested_amount";
   firstInstallmentDelayDays: number[];
   requiresManagerAuthorizationNotice: boolean;
   isActive: boolean;
@@ -69,7 +71,7 @@ export type RuntimeFinancialTable = {
 
 export type RuntimePriority = {
   id: string;
-  network: "PCG" | "DES";
+  network: "PCG" | "DES" | "Paoleschi";
   companyId?: string;
   productId?: string;
   financialTableId?: string;
@@ -80,7 +82,7 @@ export type RuntimePriority = {
 
 export type RuntimeInternalMessage = {
   id: string;
-  network: "PCG" | "DES";
+  network: "PCG" | "DES" | "Paoleschi";
   companyId?: string;
   productId?: string;
   financialTableId?: string;
@@ -88,7 +90,7 @@ export type RuntimeInternalMessage = {
 
 export type ComparisonBuildInput = {
   simulationId: string;
-  network: "PCG" | "DES";
+  network: "PCG" | "DES" | "Paoleschi";
   calculationDate: number;
   patient: PatientFinancialProfile;
   requestedAmount: number;
@@ -318,6 +320,8 @@ function runFinancialCalculation(
     internalCostPercentApplied: economics.internalCostPercentApplied,
     internalCostPercentAt24Months: economics.internalCostPercentAt24Months,
     internalCostBase: table.internalCostBase,
+    activeCommissionPercent: table.activeCommissionPercent,
+    activeCommissionBase: table.activeCommissionBase,
     firstInstallmentDelayDays: delayDays,
   });
 

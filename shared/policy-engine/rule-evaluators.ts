@@ -2,6 +2,7 @@ import {
   estimateAgeAtFinancingEnd,
   calculateFinancingEndDate,
 } from "./date-utils.ts";
+import { evaluateSmvSeniorAge } from "./smv-senior-age.ts";
 import type {
   PatientFinancialProfile,
   PolicyOperator,
@@ -380,6 +381,21 @@ export function evaluatePolicyRule(
       const result = compareNumber(ctx.durationMonths, operator, rule.numericValue);
       if (result === null) return unsupportedOperator(rule);
       return result ? passed(rule) : failed(rule);
+    }
+
+    case "precise_age_at_application_range": {
+      const evaluation = evaluateSmvSeniorAge({
+        age: patient.age,
+        birthDate: patient.birthDate,
+        calculationDate: ctx.calculationDate,
+      });
+      if (evaluation.status === "passed") {
+        return passed(rule, evaluation.detail);
+      }
+      if (evaluation.status === "verification_required") {
+        return verification(rule, evaluation.detail, rule.verificationMessage);
+      }
+      return failed(rule, evaluation.detail);
     }
 
     case "custom":

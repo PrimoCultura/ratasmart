@@ -1,7 +1,11 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-const network = v.union(v.literal("PCG"), v.literal("DES"));
+const network = v.union(
+  v.literal("PCG"),
+  v.literal("DES"),
+  v.literal("Paoleschi"),
+);
 
 const productCategory = v.union(
   v.literal("standard"),
@@ -9,6 +13,7 @@ const productCategory = v.union(
   v.literal("subsidized"),
   v.literal("small_amount"),
   v.literal("special"),
+  v.literal("bnpl"),
 );
 
 const openingFeeType = v.union(
@@ -22,6 +27,8 @@ const installmentFeeType = v.union(
   v.literal("fixed"),
   v.literal("percentage_of_requested_amount"),
 );
+
+const activeCommissionBase = v.union(v.literal("requested_amount"));
 
 const internalCostBase = v.union(
   v.literal("requested_amount"),
@@ -56,6 +63,7 @@ const policyRuleType = v.union(
   v.literal("maximum_amount"),
   v.literal("minimum_duration"),
   v.literal("maximum_duration"),
+  v.literal("precise_age_at_application_range"),
   v.literal("custom"),
 );
 
@@ -121,6 +129,7 @@ const comparisonSource = v.union(
 const knowledgeNetwork = v.union(
   v.literal("PCG"),
   v.literal("DES"),
+  v.literal("Paoleschi"),
   v.literal("BOTH"),
 );
 
@@ -178,6 +187,8 @@ export default defineSchema({
     targetInstallment: v.optional(v.number()),
     selectedSolutionLabel: v.optional(v.string()),
     patientAge: v.optional(v.number()),
+    /** Data di nascita ISO `YYYY-MM-DD` (necessaria per età Senior SMV precisa). */
+    patientBirthDate: v.optional(v.string()),
     employmentType: v.optional(employmentType),
     temporaryContractExpiry: v.optional(v.number()),
     isNonEuCitizen: v.optional(v.boolean()),
@@ -299,6 +310,8 @@ export default defineSchema({
       installmentFeeValue: v.optional(v.number()),
       internalCostPercentAt24Months: v.optional(v.number()),
       internalCostBase: v.optional(internalCostBase),
+      activeCommissionPercent: v.optional(v.number()),
+      activeCommissionBase: v.optional(activeCommissionBase),
       supportedFirstInstallmentDelayDays: v.array(v.number()),
       requiresManagerAuthorizationNotice: v.boolean(),
     }),
@@ -315,6 +328,8 @@ export default defineSchema({
       internalCostPercentApplied: v.optional(v.number()),
       internalCostPercentAt24Months: v.optional(v.number()),
       internalCostBase: v.optional(internalCostBase),
+      activeCommissionPercent: v.optional(v.number()),
+      activeCommissionBase: v.optional(activeCommissionBase),
       firstInstallmentDelayDays: v.number(),
     }),
     calculationSummary: v.optional(
@@ -341,6 +356,10 @@ export default defineSchema({
         internalCostPercentApplied: v.number(),
         internalCostAmount: v.number(),
         netAmountPaidToCompany: v.number(),
+        activeCommissionPercent: v.optional(v.number()),
+        activeCommissionBase: v.optional(activeCommissionBase),
+        activeCommissionAmount: v.optional(v.number()),
+        companyEconomicValue: v.optional(v.number()),
       }),
     ),
     compatibilitySnapshot: v.object({
@@ -448,6 +467,8 @@ export default defineSchema({
     installmentFeeValue: v.optional(v.number()),
     internalCostPercentAt24Months: v.optional(v.number()),
     internalCostBase: v.optional(internalCostBase),
+    activeCommissionPercent: v.optional(v.number()),
+    activeCommissionBase: v.optional(activeCommissionBase),
     durationTerms: v.optional(v.array(durationTerm)),
     firstInstallmentDelayDays: v.array(v.number()),
     requiresManagerAuthorizationNotice: v.boolean(),

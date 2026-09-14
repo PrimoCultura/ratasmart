@@ -13,7 +13,7 @@ export function matchEntitiesFromQuestion(
   const companyIds = new Set<string>();
   const productIds = new Set<string>();
   const tableIds = new Set<string>();
-  const networks = new Set<"PCG" | "DES">();
+  const networks = new Set<"PCG" | "DES" | "Paoleschi">();
   const matchedLabels: string[] = [];
 
   const sorted = [...catalog].sort(
@@ -49,6 +49,7 @@ export function matchEntitiesFromQuestion(
 
   if (normalizedQuestion.includes("pcg")) networks.add("PCG");
   if (normalizedQuestion.includes("des")) networks.add("DES");
+  if (normalizedQuestion.includes("paoleschi")) networks.add("Paoleschi");
 
   return {
     companyIds: [...companyIds],

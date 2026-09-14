@@ -38,7 +38,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-type NetworkFilter = "ALL" | "PCG" | "DES";
+type NetworkFilter = "ALL" | "PCG" | "DES" | "Paoleschi";
 type ActiveFilter = "ALL" | "ACTIVE" | "INACTIVE";
 
 export function TablesPage() {
@@ -49,6 +49,7 @@ export function TablesPage() {
   const seedAgosPcg = useMutation(api.seed.seedAgosPcg2026);
   const seedDeutscheBankPcg = useMutation(api.seed.seedDeutscheBankPcg2026);
   const seedCompassPcg = useMutation(api.seed.seedCompassPcg2026);
+  const seedDesPaoleschi = useMutation(api.seed.seedDesPaoleschi2026);
 
   const [search, setSearch] = useState("");
   const [network, setNetwork] = useState<NetworkFilter>("ALL");
@@ -82,7 +83,7 @@ export function TablesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Tabelle finanziarie"
-        description="Condizioni economiche versionabili per rete PCG/DES. Le modifiche rilevanti creano una nuova versione."
+        description="Condizioni economiche versionabili per rete PCG / DES / Paoleschi. Le modifiche rilevanti creano una nuova versione."
         actions={
           <div className="flex flex-wrap gap-2">
             <SeedButton
@@ -152,6 +153,38 @@ export function TablesPage() {
                     toast.success(
                       `Compass PCG: +${summary.created.length} create, ${summary.updatedOrVersioned.length} versionate, ${summary.skipped.length} skip`,
                     );
+                    if (summary.warnings.length > 0) {
+                      toast.message(summary.warnings.join(" · "));
+                    }
+                  })
+                  .catch((error: unknown) =>
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Seed non riuscito",
+                    ),
+                  )
+                  .finally(() => setSeeding(false));
+              }}
+            />
+            <SeedButton
+              label="Carica configurazione DES / Paoleschi 2026"
+              title="Caricare DES / Paoleschi 2026?"
+              description="Allinea società e availability DES/Paoleschi. Non inventa economie tabelle mancanti: i campi incompleti restano da confermare."
+              disabled={!userId || seeding}
+              onConfirm={() => {
+                if (!userId) return;
+                setSeeding(true);
+                void seedDesPaoleschi({ actorUserId: userId })
+                  .then((summary) => {
+                    toast.success(
+                      `DES/Paoleschi: +${summary.created.length} create, ${summary.updated.length} aggiornate, ${summary.deactivated.length} disattivate, ${summary.unchanged.length} invariate`,
+                    );
+                    if (summary.missingData.length > 0) {
+                      toast.message(
+                        `Dati ancora da confermare: ${summary.missingData.length} voci (vedi report seed).`,
+                      );
+                    }
                     if (summary.warnings.length > 0) {
                       toast.message(summary.warnings.join(" · "));
                     }

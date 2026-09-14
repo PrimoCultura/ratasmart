@@ -29,6 +29,12 @@ export type FinancialCalculationInput = {
   internalCostPercentAt24Months?: number;
   /** Default legacy: financed_amount. */
   internalCostBase?: InternalCostBase;
+  /**
+   * Provvigione attiva % riconosciuta alla società (non è company cost).
+   * Base tipica: requested_amount (erogato).
+   */
+  activeCommissionPercent?: number;
+  activeCommissionBase?: "requested_amount";
   firstInstallmentDelayDays: number;
 };
 
@@ -93,6 +99,12 @@ export type FinancialCalculationResult = {
   internalCostPercentApplied: number;
   internalCostAmount: number;
   netAmountPaidToCompany: number;
+  /** Provvigione attiva % (0 se assente). */
+  activeCommissionPercent: number;
+  activeCommissionBase?: "requested_amount";
+  activeCommissionAmount: number;
+  /** Netto erogato + provvigione attiva. */
+  companyEconomicValue: number;
   estimatedTaeg: TaegCalculationResult;
   amortizationSchedule: AmortizationRow[];
   warnings: string[];

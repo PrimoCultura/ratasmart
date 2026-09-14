@@ -61,6 +61,13 @@ export type {
   InternalCostResult,
 } from "./internal-cost.ts";
 
+export { calculateActiveCommission } from "./active-commission.ts";
+export type {
+  ActiveCommissionBase,
+  ActiveCommissionInput,
+  ActiveCommissionResult,
+} from "./active-commission.ts";
+
 export { resolveInstallmentFee } from "./installment-fee.ts";
 export type {
   ResolveInstallmentFeeInput,

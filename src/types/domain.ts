@@ -24,7 +24,7 @@ export type FinancialConditionsSnapshot = {
   financialTableId: FinancialTableId;
   tableCode: string;
   version: number;
-  network: "PCG" | "DES";
+  network: "PCG" | "DES" | "Paoleschi";
   customerTanPercent: number;
   openingFeeType: "none" | "fixed" | "percentage";
   openingFeeValue: number;

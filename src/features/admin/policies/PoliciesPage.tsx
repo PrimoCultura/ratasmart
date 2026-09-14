@@ -89,7 +89,7 @@ export function PoliciesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Policy"
-        description="Policy formali di compatibilità paziente (PCG/DES). Le condizioni economiche restano nelle tabelle finanziarie."
+        description="Policy formali di compatibilità paziente (PCG / DES / Paoleschi). Le condizioni economiche restano nelle tabelle finanziarie."
         actions={
           <div className="flex flex-wrap gap-2">
             <SeedPoliciesButton

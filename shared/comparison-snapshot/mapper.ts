@@ -113,6 +113,10 @@ export function mapCalculationSummary(
     internalCostPercentApplied: calculation.internalCostPercentApplied,
     internalCostAmount: calculation.internalCostAmount,
     netAmountPaidToCompany: calculation.netAmountPaidToCompany,
+    activeCommissionPercent: calculation.activeCommissionPercent,
+    activeCommissionBase: calculation.activeCommissionBase,
+    activeCommissionAmount: calculation.activeCommissionAmount,
+    companyEconomicValue: calculation.companyEconomicValue,
   };
 
   if (
@@ -166,6 +170,20 @@ export function mapCalculationInputSnapshot(
   );
   if (costBase !== undefined) {
     input.internalCostBase = costBase;
+  }
+
+  const activeCommissionPercent = normalizeOptional(
+    solution.calculation?.activeCommissionPercent ??
+      table.activeCommissionPercent,
+  );
+  if (activeCommissionPercent !== undefined && activeCommissionPercent > 0) {
+    input.activeCommissionPercent = activeCommissionPercent;
+  }
+  const activeCommissionBase = normalizeOptional(
+    solution.calculation?.activeCommissionBase ?? table.activeCommissionBase,
+  );
+  if (activeCommissionBase !== undefined) {
+    input.activeCommissionBase = activeCommissionBase;
   }
 
   const appliedFromTerm = normalizeOptional(
@@ -348,6 +366,8 @@ export function mapRuntimeSolutionToPersistentSnapshot(
         table.internalCostPercentAt24Months,
       ),
       internalCostBase: normalizeOptional(table.internalCostBase),
+      activeCommissionPercent: normalizeOptional(table.activeCommissionPercent),
+      activeCommissionBase: normalizeOptional(table.activeCommissionBase),
       supportedFirstInstallmentDelayDays: [
         ...table.firstInstallmentDelayDays,
       ],
