@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { patientSnapshotValidator } from "./lib/patientSnapshotValidator";
 
 const network = v.union(
   v.literal("PCG"),
@@ -226,23 +227,7 @@ export default defineSchema({
     selectedFirstInstallmentDelayDays: v.number(),
     requestedAmount: v.number(),
     targetInstallment: v.optional(v.number()),
-    patientSnapshot: v.object({
-      firstName: v.string(),
-      lastName: v.string(),
-      age: v.number(),
-      birthDate: v.optional(v.string()),
-      ageAtReferenceDate: v.optional(v.number()),
-      employmentType,
-      temporaryContractExpiry: v.optional(v.number()),
-      isNonEuCitizen: v.boolean(),
-      residencePermitExpiry: v.optional(v.number()),
-      hasResidencePermitRenewalReceiptOnly: v.optional(v.boolean()),
-      employmentStartDate: v.optional(v.string()),
-      employmentSeniorityMonths: v.optional(v.number()),
-      seniorityReferenceDate: v.optional(v.number()),
-      hasGuarantor: v.optional(v.boolean()),
-      patientRequestsZeroInterest: v.optional(v.boolean()),
-    }),
+    patientSnapshot: patientSnapshotValidator,
     compatibleSolutionsCount: v.number(),
     verificationRequiredSolutionsCount: v.number(),
     incompatibleSolutionsCount: v.number(),

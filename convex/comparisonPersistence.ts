@@ -14,20 +14,11 @@ import {
   type ProductMetadataForSnapshot,
   type TableMetadataForSnapshot,
 } from "./lib/comparisonSnapshotMapper";
+import { patientSnapshotValidator } from "./lib/patientSnapshotValidator";
 
 const sourceValidator = v.union(
   v.literal("initial_calculation"),
   v.literal("manual_recalculation"),
-);
-const employmentTypeValidator = v.union(
-  v.literal("permanent_employee"),
-  v.literal("temporary_employee"),
-  v.literal("pensioner"),
-  v.literal("self_employed"),
-  v.literal("unemployed"),
-  v.literal("student"),
-  v.literal("housewife"),
-  v.literal("other"),
 );
 
 /**
@@ -42,21 +33,7 @@ export const persistComparisonRun = internalMutation({
     source: sourceValidator,
     calculationDate: v.number(),
     requestedAmount: v.number(),
-    patientSnapshot: v.object({
-      firstName: v.string(),
-      lastName: v.string(),
-      age: v.number(),
-      employmentType: employmentTypeValidator,
-      temporaryContractExpiry: v.optional(v.number()),
-      isNonEuCitizen: v.boolean(),
-      residencePermitExpiry: v.optional(v.number()),
-      hasResidencePermitRenewalReceiptOnly: v.optional(v.boolean()),
-      employmentStartDate: v.optional(v.string()),
-      employmentSeniorityMonths: v.optional(v.number()),
-      seniorityReferenceDate: v.optional(v.number()),
-      hasGuarantor: v.optional(v.boolean()),
-      patientRequestsZeroInterest: v.optional(v.boolean()),
-    }),
+    patientSnapshot: patientSnapshotValidator,
     result: v.any(),
     messagesById: v.any(),
     tables: v.array(v.any()),

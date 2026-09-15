@@ -37,6 +37,7 @@ import type * as lib_comparisonSnapshotMapper from "../lib/comparisonSnapshotMap
 import type * as lib_desPaoleschi2026Data from "../lib/desPaoleschi2026Data.js";
 import type * as lib_desPaoleschiSeedRunner from "../lib/desPaoleschiSeedRunner.js";
 import type * as lib_financialValidation from "../lib/financialValidation.js";
+import type * as lib_patientSnapshotValidator from "../lib/patientSnapshotValidator.js";
 import type * as lib_pcg2026SeedData from "../lib/pcg2026SeedData.js";
 import type * as lib_pcgFinancingPolicies2026Data from "../lib/pcgFinancingPolicies2026Data.js";
 import type * as lib_pcgPolicySeedRunner from "../lib/pcgPolicySeedRunner.js";
@@ -83,6 +84,7 @@ declare const fullApi: ApiFromModules<{
   "lib/desPaoleschi2026Data": typeof lib_desPaoleschi2026Data;
   "lib/desPaoleschiSeedRunner": typeof lib_desPaoleschiSeedRunner;
   "lib/financialValidation": typeof lib_financialValidation;
+  "lib/patientSnapshotValidator": typeof lib_patientSnapshotValidator;
   "lib/pcg2026SeedData": typeof lib_pcg2026SeedData;
   "lib/pcgFinancingPolicies2026Data": typeof lib_pcgFinancingPolicies2026Data;
   "lib/pcgPolicySeedRunner": typeof lib_pcgPolicySeedRunner;
