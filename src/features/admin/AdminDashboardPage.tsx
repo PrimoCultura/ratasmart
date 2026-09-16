@@ -61,8 +61,15 @@ export function AdminDashboardPage() {
   const [companyId, setCompanyId] = useState("ALL");
   const [productId, setProductId] = useState("ALL");
 
-  const toMs = Date.now();
-  const fromMs = toMs - Number(periodDays) * 24 * 60 * 60 * 1000;
+  // Stabilizza gli argomenti Convex: Date.now() a ogni render
+  // farebbe ripartire la query all'infinito → LoadingState permanente.
+  const periodRange = useMemo(() => {
+    const toMs = Date.now();
+    return {
+      toMs,
+      fromMs: toMs - Number(periodDays) * 24 * 60 * 60 * 1000,
+    };
+  }, [periodDays]);
 
   const filterOptions = useQuery(
     api.adminAnalytics.listFilterOptions,
@@ -73,8 +80,8 @@ export function AdminDashboardPage() {
     userId
       ? {
           actorUserId: userId,
-          fromMs,
-          toMs,
+          fromMs: periodRange.fromMs,
+          toMs: periodRange.toMs,
           network: network === "ALL" ? undefined : network,
           clinicName: clinicName === "ALL" ? undefined : clinicName,
           companyId: companyId === "ALL" ? undefined : companyId,
@@ -90,6 +97,10 @@ export function AdminDashboardPage() {
       (product) => product.companyId === companyId,
     );
   }, [filterOptions, companyId]);
+
+  if (!userId) {
+    return <LoadingState />;
+  }
 
   if (analytics === undefined || filterOptions === undefined) {
     return <LoadingState />;

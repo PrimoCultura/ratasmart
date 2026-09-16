@@ -90,14 +90,14 @@ export const getAdminDashboardAnalytics = query({
       return (owner?.clinicName ?? "").toLowerCase() === clinicFilter;
     };
 
-    let runsQuery = ctx.db
+    const allRuns = await ctx.db
       .query("simulationComparisonRuns")
-      .withIndex("by_calculation_date");
-    // Convex range: collect then filter by period (index still helps ordered scan)
-    const allRuns = await runsQuery.collect();
+      .withIndex("by_calculation_date", (q) =>
+        q.gte("calculationDate", args.fromMs).lte("calculationDate", args.toMs),
+      )
+      .collect();
 
     const runsInPeriod = allRuns.filter((run) => {
-      if (!inPeriod(run.calculationDate, args.fromMs, args.toMs)) return false;
       if (args.network && run.network !== args.network) return false;
       if (!ownerMatchesClinic(run.ownerUserId)) return false;
       return true;

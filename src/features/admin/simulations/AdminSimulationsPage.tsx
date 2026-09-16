@@ -61,11 +61,17 @@ export function AdminSimulationsPage() {
     useState<SimulationDeletionReason>("data_entry_error");
   const [deletionNotes, setDeletionNotes] = useState("");
 
-  const now = Date.now();
-  const fromMs =
-    period === "all"
-      ? undefined
-      : now - Number(period) * 24 * 60 * 60 * 1000;
+  // Stabilizza gli argomenti Convex (evita Date.now() a ogni render).
+  const periodRange = useMemo(() => {
+    if (period === "all") {
+      return { fromMs: undefined as number | undefined, toMs: undefined as number | undefined };
+    }
+    const toMs = Date.now();
+    return {
+      toMs,
+      fromMs: toMs - Number(period) * 24 * 60 * 60 * 1000,
+    };
+  }, [period]);
 
   const filterOptions = useQuery(
     api.adminAnalytics.listFilterOptions,
@@ -76,8 +82,8 @@ export function AdminSimulationsPage() {
     userId
       ? {
           actorUserId: userId,
-          fromMs,
-          toMs: period === "all" ? undefined : now,
+          fromMs: periodRange.fromMs,
+          toMs: periodRange.toMs,
           network: network === "ALL" ? undefined : network,
           clinicName: clinicName === "ALL" ? undefined : clinicName,
           ownerUserId:
@@ -98,6 +104,10 @@ export function AdminSimulationsPage() {
     [filterOptions],
   );
   const cms = useMemo(() => filterOptions?.users ?? [], [filterOptions]);
+
+  if (!userId) {
+    return <LoadingState />;
+  }
 
   if (rows === undefined || filterOptions === undefined) {
     return <LoadingState />;
