@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrentUser } from "@/lib/auth/useCurrentUser";
 import { cn } from "@/lib/utils";
+import { AssistantMessageFeedback } from "./AssistantMessageFeedback";
 
 const WELCOME =
   "Sono Virtual Marco.\n\nPosso aiutarti a comprendere policy, procedure e risultati delle simulazioni.\nNon effettuo calcoli autonomi e non sostituisco la decisione della finanziaria.";
@@ -53,6 +54,24 @@ export function ChatPage() {
     api.assistantConversations.listAssistantMessages,
     userId && selectedId
       ? { currentUserId: userId, conversationId: selectedId }
+      : "skip",
+  );
+
+  const assistantIds = useMemo(
+    () =>
+      (messages ?? [])
+        .filter(
+          (message) =>
+            message.role === "assistant" && message.status === "completed",
+        )
+        .map((message) => message._id),
+    [messages],
+  );
+
+  const feedbackMap = useQuery(
+    api.assistantFeedback.listMyFeedbackForMessages,
+    userId && assistantIds.length > 0
+      ? { actorUserId: userId, assistantMessageIds: assistantIds }
       : "skip",
   );
 
@@ -264,6 +283,17 @@ export function ChatPage() {
                               </ul>
                             </details>
                           ) : null}
+                          <AssistantMessageFeedback
+                            assistantMessageId={message._id}
+                            currentFeedback={
+                              (feedbackMap?.[message._id] as
+                                | "HELPFUL"
+                                | "NOT_HELPFUL"
+                                | "INCORRECT_INFORMATION"
+                                | "MISSING_INFORMATION"
+                                | undefined) ?? null
+                            }
+                          />
                         </div>
                       ) : null}
                     </div>

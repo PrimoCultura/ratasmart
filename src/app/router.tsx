@@ -18,6 +18,8 @@ import { KnowledgeCardsPage } from "@/features/admin/virtual-marco/KnowledgeCard
 import { KnowledgeCardFormPage } from "@/features/admin/virtual-marco/KnowledgeCardFormPage";
 import { KnowledgePreviewPage } from "@/features/admin/virtual-marco/KnowledgePreviewPage";
 import { AssistantConversationsAdminPage } from "@/features/admin/virtual-marco/AssistantConversationsAdminPage";
+import { VirtualMarcoIntelligencePage } from "@/features/admin/virtual-marco/VirtualMarcoIntelligencePage";
+import { KnowledgeIssueDetailPage } from "@/features/admin/virtual-marco/KnowledgeIssueDetailPage";
 import { ChatPage } from "@/features/chat/ChatPage";
 import { FaqPage } from "@/features/faq/FaqPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
@@ -83,6 +85,14 @@ export function AppRouter() {
           <Route path="priorita" element={<PrioritiesPage />} />
           <Route path="messaggi" element={<InternalMessagesPage />} />
           <Route path="virtual-marco" element={<VirtualMarcoHubPage />} />
+          <Route
+            path="virtual-marco/intelligence"
+            element={<VirtualMarcoIntelligencePage />}
+          />
+          <Route
+            path="virtual-marco/intelligence/issues/:issueId"
+            element={<KnowledgeIssueDetailPage />}
+          />
           <Route
             path="virtual-marco/configurazione"
             element={<AssistantConfigPage />}

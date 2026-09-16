@@ -16,6 +16,7 @@ import type * as assistantChatData from "../assistantChatData.js";
 import type * as assistantChatPersistence from "../assistantChatPersistence.js";
 import type * as assistantConfigs from "../assistantConfigs.js";
 import type * as assistantConversations from "../assistantConversations.js";
+import type * as assistantFeedback from "../assistantFeedback.js";
 import type * as commercialPriorities from "../commercialPriorities.js";
 import type * as comparison from "../comparison.js";
 import type * as comparisonData from "../comparisonData.js";
@@ -46,10 +47,12 @@ import type * as lib_pcgFinancingPolicies2026Data from "../lib/pcgFinancingPolic
 import type * as lib_pcgPolicySeedRunner from "../lib/pcgPolicySeedRunner.js";
 import type * as lib_pcgSeedRunner from "../lib/pcgSeedRunner.js";
 import type * as lib_policyMapper from "../lib/policyMapper.js";
+import type * as lib_vmIntelligence from "../lib/vmIntelligence.js";
 import type * as policies from "../policies.js";
 import type * as seed from "../seed.js";
 import type * as simulations from "../simulations.js";
 import type * as users from "../users.js";
+import type * as vmIntelligenceAdmin from "../vmIntelligenceAdmin.js";
 
 import type {
   ApiFromModules,
@@ -66,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   assistantChatPersistence: typeof assistantChatPersistence;
   assistantConfigs: typeof assistantConfigs;
   assistantConversations: typeof assistantConversations;
+  assistantFeedback: typeof assistantFeedback;
   commercialPriorities: typeof commercialPriorities;
   comparison: typeof comparison;
   comparisonData: typeof comparisonData;
@@ -96,10 +100,12 @@ declare const fullApi: ApiFromModules<{
   "lib/pcgPolicySeedRunner": typeof lib_pcgPolicySeedRunner;
   "lib/pcgSeedRunner": typeof lib_pcgSeedRunner;
   "lib/policyMapper": typeof lib_policyMapper;
+  "lib/vmIntelligence": typeof lib_vmIntelligence;
   policies: typeof policies;
   seed: typeof seed;
   simulations: typeof simulations;
   users: typeof users;
+  vmIntelligenceAdmin: typeof vmIntelligenceAdmin;
 }>;
 
 /**

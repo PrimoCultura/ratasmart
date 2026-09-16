@@ -21,6 +21,7 @@
     "test:documentation": "vitest run shared/documentation-requirements",
     "test:zero-alternative": "vitest run shared/zero-interest-alternative",
     "test:admin-analytics": "vitest run shared/admin-analytics",
+    "test:vm-intelligence": "vitest run shared/virtual-marco-intelligence",
     "verify:financial": "tsx scripts/verify-financial-engine.ts"
   },
   "dependencies": {

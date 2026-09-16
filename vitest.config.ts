@@ -22,6 +22,7 @@ export default defineConfig({
       "shared/documentation-requirements/**/*.test.ts",
       "shared/zero-interest-alternative/**/*.test.ts",
       "shared/admin-analytics/**/*.test.ts",
+      "shared/virtual-marco-intelligence/**/*.test.ts",
       "src/features/simulator/**/*.test.ts",
     ],
     environment: "node",

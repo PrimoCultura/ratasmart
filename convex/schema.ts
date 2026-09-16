@@ -748,4 +748,102 @@ export default defineSchema({
     .index("by_timestamp", ["timestamp"])
     .index("by_admin", ["adminUserId", "timestamp"])
     .index("by_entity", ["entityType", "entityId"]),
+
+  /**
+   * Virtual Marco Intelligence — metadati per interazione (no testo chat / no PII).
+   */
+  assistantInteractionAnalytics: defineTable({
+    conversationId: v.id("assistantConversations"),
+    userMessageId: v.id("assistantMessages"),
+    assistantMessageId: v.id("assistantMessages"),
+    userId: v.id("appUsers"),
+    simulationId: v.optional(v.id("simulations")),
+    network: v.optional(
+      v.union(v.literal("PCG"), v.literal("DES"), v.literal("Paoleschi")),
+    ),
+    createdAt: v.number(),
+    primaryTopic: v.string(),
+    topicCodes: v.array(v.string()),
+    companyCodes: v.array(v.string()),
+    productCodes: v.array(v.string()),
+    intentCodes: v.array(v.string()),
+    sourceCount: v.number(),
+    hasKnowledgeSource: v.boolean(),
+    hasKbSource: v.boolean(),
+    hasPolicySource: v.boolean(),
+    hasSimulationSource: v.boolean(),
+    requiresVerification: v.boolean(),
+    knowledgeCoverageStatus: v.union(
+      v.literal("FULL"),
+      v.literal("NONE"),
+      v.literal("NOT_APPLICABLE"),
+    ),
+    candidateIssueReasonCodes: v.array(v.string()),
+    analyticsVersion: v.string(),
+  })
+    .index("by_created_at", ["createdAt"])
+    .index("by_assistant_message", ["assistantMessageId"])
+    .index("by_primary_topic", ["primaryTopic", "createdAt"])
+    .index("by_network_created_at", ["network", "createdAt"])
+    .index("by_user", ["userId", "createdAt"])
+    .index("by_coverage", ["knowledgeCoverageStatus", "createdAt"]),
+
+  assistantFeedback: defineTable({
+    assistantMessageId: v.id("assistantMessages"),
+    conversationId: v.id("assistantConversations"),
+    userId: v.id("appUsers"),
+    feedbackType: v.union(
+      v.literal("HELPFUL"),
+      v.literal("NOT_HELPFUL"),
+      v.literal("INCORRECT_INFORMATION"),
+      v.literal("MISSING_INFORMATION"),
+    ),
+    comment: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_assistant_message", ["assistantMessageId"])
+    .index("by_user_message", ["userId", "assistantMessageId"])
+    .index("by_created_at", ["createdAt"]),
+
+  knowledgeIssues: defineTable({
+    conversationId: v.id("assistantConversations"),
+    userMessageId: v.id("assistantMessages"),
+    assistantMessageId: v.id("assistantMessages"),
+    topic: v.string(),
+    network: v.optional(
+      v.union(v.literal("PCG"), v.literal("DES"), v.literal("Paoleschi")),
+    ),
+    companyCodes: v.array(v.string()),
+    productCodes: v.array(v.string()),
+    detectedBy: v.union(
+      v.literal("AUTOMATIC_RULE"),
+      v.literal("USER_FEEDBACK"),
+      v.literal("ADMIN"),
+    ),
+    reasonCodes: v.array(v.string()),
+    primaryReasonCode: v.string(),
+    status: v.union(
+      v.literal("NEW"),
+      v.literal("REVIEWING"),
+      v.literal("CONFIRMED_GAP"),
+      v.literal("CONTENT_ERROR"),
+      v.literal("NOT_A_GAP"),
+      v.literal("RESOLVED"),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    reviewedBy: v.optional(v.id("appUsers")),
+    resolvedBy: v.optional(v.id("appUsers")),
+    resolvedAt: v.optional(v.number()),
+    adminNotes: v.optional(v.string()),
+    linkedKnowledgeCardId: v.optional(v.id("knowledgeCards")),
+  })
+    .index("by_created_at", ["createdAt"])
+    .index("by_status", ["status", "createdAt"])
+    .index("by_topic", ["topic", "createdAt"])
+    .index("by_assistant_message", ["assistantMessageId"])
+    .index("by_message_reason", ["assistantMessageId", "primaryReasonCode"])
+    .index("by_network_created_at", ["network", "createdAt"])
+    .index("by_detected_by", ["detectedBy", "createdAt"]),
 });

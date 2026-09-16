@@ -1,10 +1,17 @@
 import { Link } from "react-router-dom";
-import { BookOpen, Bot, MessagesSquare, Search } from "lucide-react";
+import { BookOpen, Bot, Brain, MessagesSquare, Search } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const sections = [
+  {
+    to: "/admin/virtual-marco/intelligence",
+    title: "Intelligence",
+    description:
+      "Temi, coverage, knowledge issues e segnali formativi (candidati).",
+    icon: Brain,
+  },
   {
     to: "/admin/virtual-marco/configurazione",
     title: "Configurazione",
@@ -39,7 +46,7 @@ export function VirtualMarcoHubPage() {
         description="Configurazione, knowledge base e chat contestuale (Fase 4B)."
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {sections.map((section) => (
           <Card key={section.to}>
             <CardHeader>

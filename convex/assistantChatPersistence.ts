@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { recordAssistantInteractionAnalytics } from "./lib/vmIntelligence";
 
 const privacyModeValidator = v.union(
   v.literal("patient_safe"),
@@ -206,6 +207,30 @@ export const completeAssistantTurn = internalMutation({
       lastMessageAt: now,
       updatedAt: now,
     });
+
+    // Analytics side-effect: non blocca / non fallisce il turn chat.
+    try {
+      const siblings = await ctx.db
+        .query("assistantMessages")
+        .withIndex("by_request_id", (q) => q.eq("requestId", message.requestId))
+        .collect();
+      const userMessage = siblings.find((item) => item.role === "user");
+      const refreshed = await ctx.db.get(args.assistantMessageId);
+      if (userMessage && refreshed) {
+        await recordAssistantInteractionAnalytics(ctx, {
+          conversationId: args.conversationId,
+          userMessageId: userMessage._id,
+          assistantMessage: refreshed,
+          sources: args.sources.map((source) => ({
+            categorySnapshot: source.categorySnapshot,
+            knowledgeCardId: source.knowledgeCardId,
+          })),
+          createAutomaticIssues: true,
+        });
+      }
+    } catch {
+      // swallow: la risposta Virtual Marco resta disponibile
+    }
 
     return { alreadyCompleted: false as const };
   },
