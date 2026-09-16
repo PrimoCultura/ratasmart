@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as adminAnalytics from "../adminAnalytics.js";
+import type * as adminGovernance from "../adminGovernance.js";
 import type * as assistantChat from "../assistantChat.js";
 import type * as assistantChatAdmin from "../assistantChatAdmin.js";
 import type * as assistantChatData from "../assistantChatData.js";
@@ -24,6 +26,7 @@ import type * as financialProducts from "../financialProducts.js";
 import type * as financialTables from "../financialTables.js";
 import type * as internalMessages from "../internalMessages.js";
 import type * as knowledgeCards from "../knowledgeCards.js";
+import type * as lib_adminAudit from "../lib/adminAudit.js";
 import type * as lib_agosPcg2026Data from "../lib/agosPcg2026Data.js";
 import type * as lib_ai_errors from "../lib/ai/errors.js";
 import type * as lib_ai_mockServerProvider from "../lib/ai/mockServerProvider.js";
@@ -55,6 +58,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  adminAnalytics: typeof adminAnalytics;
+  adminGovernance: typeof adminGovernance;
   assistantChat: typeof assistantChat;
   assistantChatAdmin: typeof assistantChatAdmin;
   assistantChatData: typeof assistantChatData;
@@ -71,6 +76,7 @@ declare const fullApi: ApiFromModules<{
   financialTables: typeof financialTables;
   internalMessages: typeof internalMessages;
   knowledgeCards: typeof knowledgeCards;
+  "lib/adminAudit": typeof lib_adminAudit;
   "lib/agosPcg2026Data": typeof lib_agosPcg2026Data;
   "lib/ai/errors": typeof lib_ai_errors;
   "lib/ai/mockServerProvider": typeof lib_ai_mockServerProvider;

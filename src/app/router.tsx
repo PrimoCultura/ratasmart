@@ -3,6 +3,7 @@ import { RoleGuard } from "@/components/auth/RoleGuard";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { CmLayout } from "@/components/layout/CmLayout";
 import { AdminDashboardPage, AdminSimulationsPage } from "@/features/admin/AdminDashboardPage";
+import { AdminUsersPage } from "@/features/admin/users/AdminUsersPage";
 import { AdminSimulationDetailPage } from "@/features/admin/simulations/AdminSimulationDetailPage";
 import { CompaniesPage } from "@/features/admin/financial-companies/CompaniesPage";
 import { TablesPage } from "@/features/admin/financial-tables/TablesPage";
@@ -68,6 +69,7 @@ export function AppRouter() {
       <Route element={<RoleGuard allow={["admin"]} />}>
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboardPage />} />
+          <Route path="utenti" element={<AdminUsersPage />} />
           <Route path="finanziarie" element={<CompaniesPage />} />
           <Route path="tabelle" element={<TablesPage />} />
           <Route path="tabelle/nuova" element={<TableFormPage mode="create" />} />

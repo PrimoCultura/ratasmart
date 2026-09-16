@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireActiveUser } from "./lib/authHelpers";
+import { isSimulationSoftDeleted } from "../shared/admin-analytics";
 import {
   calculateAgeAtDate,
   isBirthDateNotInFuture,
@@ -142,13 +143,16 @@ export const listMySimulations = query({
     ownerUserId: v.id("appUsers"),
   },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const simulations = await ctx.db
       .query("simulations")
       .withIndex("by_owner_updated_at", (q) =>
         q.eq("ownerUserId", args.ownerUserId),
       )
       .order("desc")
       .collect();
+    return simulations.filter(
+      (simulation) => !isSimulationSoftDeleted(simulation),
+    );
   },
 });
 
@@ -165,7 +169,9 @@ export const listAllSimulations = query({
     }
 
     const simulations = await ctx.db.query("simulations").collect();
-    return simulations.sort((a, b) => b.updatedAt - a.updatedAt);
+    return simulations
+      .filter((simulation) => !isSimulationSoftDeleted(simulation))
+      .sort((a, b) => b.updatedAt - a.updatedAt);
   },
 });
 
@@ -173,7 +179,9 @@ export const countAllSimulations = query({
   args: {},
   handler: async (ctx) => {
     const simulations = await ctx.db.query("simulations").collect();
-    return simulations.length;
+    return simulations.filter(
+      (simulation) => !isSimulationSoftDeleted(simulation),
+    ).length;
   },
 });
 
@@ -194,6 +202,13 @@ export const getSimulation = query({
       throw new Error(
         "Non sei autorizzato a visualizzare questa simulazione.",
       );
+    }
+
+    if (
+      isSimulationSoftDeleted(simulation) &&
+      actor.role !== "admin"
+    ) {
+      return null;
     }
 
     return simulation;
@@ -504,9 +519,19 @@ export const deleteSimulation = mutation({
   args: {
     simulationId: v.id("simulations"),
     actorUserId: v.id("appUsers"),
+    deletionReason: v.optional(
+      v.union(
+        v.literal("data_entry_error"),
+        v.literal("test"),
+        v.literal("duplicate"),
+        v.literal("user_request"),
+        v.literal("other"),
+      ),
+    ),
+    deletionNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // TODO Auth0: identità da ctx.auth
+    // Soft-delete: preserva storico/audit. Hard delete rimosso come default.
     const actor = await requireActiveUser(ctx, args.actorUserId);
     const simulation = await ctx.db.get(args.simulationId);
 
@@ -518,24 +543,18 @@ export const deleteSimulation = mutation({
       throw new Error("Non sei autorizzato a eliminare questa simulazione.");
     }
 
-    // Cascade: elimina soluzioni e run collegati (niente orfani).
-    const solutions = await ctx.db
-      .query("simulationComparisonSolutions")
-      .withIndex("by_simulation", (q) => q.eq("simulationId", args.simulationId))
-      .collect();
-    for (const solution of solutions) {
-      await ctx.db.delete(solution._id);
+    if (isSimulationSoftDeleted(simulation)) {
+      return true;
     }
 
-    const runs = await ctx.db
-      .query("simulationComparisonRuns")
-      .withIndex("by_simulation", (q) => q.eq("simulationId", args.simulationId))
-      .collect();
-    for (const run of runs) {
-      await ctx.db.delete(run._id);
-    }
-
-    await ctx.db.delete(args.simulationId);
+    const now = Date.now();
+    await ctx.db.patch(args.simulationId, {
+      deletedAt: now,
+      deletedBy: args.actorUserId,
+      deletionReason: args.deletionReason ?? "user_request",
+      deletionNotes: args.deletionNotes?.trim() || undefined,
+      updatedAt: now,
+    });
     return true;
   },
 });

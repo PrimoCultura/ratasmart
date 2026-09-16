@@ -59,6 +59,10 @@ export function AuthProvider({
       adapter.clearStoredUserId();
       setStoredUserId(null);
     }
+    if (userId && user && user.isActive === false) {
+      adapter.clearStoredUserId();
+      setStoredUserId(null);
+    }
   }, [adapter, user, userId]);
 
   const selectUser = useCallback(
@@ -82,10 +86,10 @@ export function AuthProvider({
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      user: user ?? null,
-      userId,
+      user: user && user.isActive !== false ? user : null,
+      userId: user && user.isActive !== false ? userId : null,
       isLoading,
-      isAuthenticated: Boolean(user),
+      isAuthenticated: Boolean(user && user.isActive !== false),
       selectUser,
       clearSession,
       ensureDemoAdmin,

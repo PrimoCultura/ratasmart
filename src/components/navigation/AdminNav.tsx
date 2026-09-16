@@ -8,18 +8,20 @@ import {
   Table2,
   FolderOpen,
   Bot,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const links = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/admin/utenti", label: "Utenti", icon: Users },
+  { to: "/admin/simulazioni", label: "Simulazioni", icon: FolderOpen },
   { to: "/admin/finanziarie", label: "Finanziarie", icon: Building2 },
   { to: "/admin/tabelle", label: "Tabelle", icon: Table2 },
   { to: "/admin/policy", label: "Policy", icon: Shield },
   { to: "/admin/priorita", label: "Priorità", icon: ListOrdered },
   { to: "/admin/messaggi", label: "Messaggi interni", icon: MessageSquareText },
-  { to: "/admin/virtual-marco", label: "Virtual Marco", icon: Bot },
-  { to: "/admin/simulazioni", label: "Simulazioni", icon: FolderOpen },
+  { to: "/admin/virtual-marco", label: "Virtual Marco / KB", icon: Bot },
 ];
 
 export function AdminNav() {

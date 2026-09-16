@@ -3,6 +3,7 @@ import { internalMutation, internalQuery } from "./_generated/server";
 import { isCurrentlyValid, requireActiveUser } from "./lib/authHelpers";
 import { collectRulesForTable } from "./lib/policyMapper";
 import { isTableAvailableOnNetwork } from "../shared/network-config/des-paoleschi-2026";
+import { isSimulationSoftDeleted } from "../shared/admin-analytics";
 
 export const getComparisonBundle = internalQuery({
   args: {
@@ -24,6 +25,10 @@ export const getComparisonBundle = internalQuery({
       throw new Error(
         "Non sei autorizzato a calcolare il confronto per questa simulazione.",
       );
+    }
+
+    if (isSimulationSoftDeleted(simulation) && actor.role !== "admin") {
+      throw new Error("Simulazione non trovata.");
     }
 
     const now = Date.now();

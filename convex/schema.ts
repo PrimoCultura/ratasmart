@@ -171,6 +171,8 @@ export default defineSchema({
     isDemo: v.boolean(),
     externalAuthId: v.optional(v.string()),
     isActive: v.boolean(),
+    /** Soft-anonymization applicativa (non Auth0). */
+    anonymizedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -209,11 +211,26 @@ export default defineSchema({
     comparisonStatus: v.optional(comparisonStatus),
     proposedAt: v.optional(v.number()),
     lastInputUpdatedAt: v.optional(v.number()),
+    /** Soft-delete admin/CM: esclusa da cronologia e analytics. */
+    deletedAt: v.optional(v.number()),
+    deletedBy: v.optional(v.id("appUsers")),
+    deletionReason: v.optional(
+      v.union(
+        v.literal("data_entry_error"),
+        v.literal("test"),
+        v.literal("duplicate"),
+        v.literal("user_request"),
+        v.literal("other"),
+      ),
+    ),
+    deletionNotes: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_owner", ["ownerUserId"])
-    .index("by_owner_updated_at", ["ownerUserId", "updatedAt"]),
+    .index("by_owner_updated_at", ["ownerUserId", "updatedAt"])
+    .index("by_created_at", ["createdAt"])
+    .index("by_network_created_at", ["network", "createdAt"]),
 
   simulationComparisonRuns: defineTable({
     simulationId: v.id("simulations"),
@@ -255,7 +272,9 @@ export default defineSchema({
     .index("by_simulation_created_at", ["simulationId", "createdAt"])
     .index("by_owner", ["ownerUserId"])
     .index("by_owner_created_at", ["ownerUserId", "createdAt"])
-    .index("by_request_id", ["requestId"]),
+    .index("by_request_id", ["requestId"])
+    .index("by_calculation_date", ["calculationDate"])
+    .index("by_network_calculation_date", ["network", "calculationDate"]),
 
   simulationComparisonSolutions: defineTable({
     comparisonRunId: v.id("simulationComparisonRuns"),
@@ -707,4 +726,26 @@ export default defineSchema({
     .index("by_message", ["assistantMessageId"])
     .index("by_conversation", ["conversationId"])
     .index("by_knowledge_card", ["knowledgeCardId"]),
+
+  /**
+   * Audit azioni admin (governance).
+   * Metadata senza PII paziente.
+   */
+  adminAuditLogs: defineTable({
+    adminUserId: v.id("appUsers"),
+    action: v.union(
+      v.literal("user_disabled"),
+      v.literal("user_enabled"),
+      v.literal("user_anonymized"),
+      v.literal("simulation_deleted"),
+      v.literal("simulation_restored"),
+    ),
+    entityType: v.union(v.literal("appUsers"), v.literal("simulations")),
+    entityId: v.string(),
+    timestamp: v.number(),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_timestamp", ["timestamp"])
+    .index("by_admin", ["adminUserId", "timestamp"])
+    .index("by_entity", ["entityType", "entityId"]),
 });

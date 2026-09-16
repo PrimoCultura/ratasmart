@@ -21,6 +21,7 @@ export default defineConfig({
       "shared/alternative-diagnostics/**/*.test.ts",
       "shared/documentation-requirements/**/*.test.ts",
       "shared/zero-interest-alternative/**/*.test.ts",
+      "shared/admin-analytics/**/*.test.ts",
       "src/features/simulator/**/*.test.ts",
     ],
     environment: "node",

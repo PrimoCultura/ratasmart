@@ -23,7 +23,7 @@ export function RoleGuard({ allow, redirectTo = "/" }: RoleGuardProps) {
     );
   }
 
-  if (!isAuthenticated || !user) {
+  if (!isAuthenticated || !user || user.isActive === false) {
     return <Navigate to="/" replace state={{ from: location.pathname }} />;
   }
 

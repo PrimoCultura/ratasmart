@@ -8,6 +8,7 @@ import {
   canProposeSolution,
   hasInputsChangedAfterRun,
 } from "./lib/comparisonSnapshotMapper";
+import { isSimulationSoftDeleted } from "../shared/admin-analytics";
 
 /**
  * TODO Auth0:
@@ -42,6 +43,9 @@ async function assertSimulationAccess(
   }
   if (actorRole !== "admin" && simulation.ownerUserId !== actorUserId) {
     throw new Error("Non sei autorizzato ad accedere a questa simulazione.");
+  }
+  if (isSimulationSoftDeleted(simulation) && actorRole !== "admin") {
+    throw new Error("Simulazione non trovata.");
   }
   return simulation;
 }
@@ -378,8 +382,12 @@ export const listMySimulationsWithComparisonSummary = query({
       .order("desc")
       .collect();
 
+    const active = simulations.filter(
+      (simulation) => !isSimulationSoftDeleted(simulation),
+    );
+
     return Promise.all(
-      simulations.map((simulation) =>
+      active.map((simulation) =>
         buildSimulationComparisonSummary(ctx, simulation),
       ),
     );
@@ -389,12 +397,18 @@ export const listMySimulationsWithComparisonSummary = query({
 export const listAllSimulationsWithComparisonSummary = query({
   args: {
     actorUserId: v.id("appUsers"),
+    includeDeleted: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // TODO Auth0: identità da ctx.auth
     await requireAdmin(ctx, args.actorUserId);
 
-    const simulations = await ctx.db.query("simulations").collect();
+    let simulations = await ctx.db.query("simulations").collect();
+    if (!args.includeDeleted) {
+      simulations = simulations.filter(
+        (simulation) => !isSimulationSoftDeleted(simulation),
+      );
+    }
     simulations.sort((a, b) => b.updatedAt - a.updatedAt);
 
     return Promise.all(
